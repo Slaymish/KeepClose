@@ -1,10 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
-#if os(macOS)
-import AppKit
-#else
-import UIKit
-#endif
+import NativeUI
 
 struct AgentImportView: View {
     @Environment(RelationshipStore.self) private var store
@@ -110,11 +106,7 @@ struct AgentImportView: View {
                 .fileImporter(isPresented: $choosingFile, allowedContentTypes: [.json, .plainText], allowsMultipleSelection: false) { selection in
                     do {
                         guard let url = try selection.get().first else { return }
-                        let scoped = url.startAccessingSecurityScopedResource()
-                        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                        let handle = try FileHandle(forReadingFrom: url)
-                        defer { try? handle.close() }
-                        preview(try handle.read(upToCount: 2_000_001) ?? Data())
+                        preview(try ImportFile.read(url))
                     } catch { plan = nil; batch = nil; selected = []; setAside = []; failure = "Couldn't read the import file: \(error.localizedDescription)" }
                 }
         }
@@ -129,12 +121,7 @@ struct AgentImportView: View {
     private func copyPrompt() {
         loadPrompt()
         guard !prompt.isEmpty else { return }
-        #if os(macOS)
-        NSPasteboard.general.clearContents()
-        copied = NSPasteboard.general.setString(prompt, forType: .string)
-        #else
-        UIPasteboard.general.string = prompt; copied = true
-        #endif
+        copied = NativeClipboard.copy(prompt)
     }
     private func preview(_ data: Data) {
         failure = nil; plan = nil; batch = nil; selected = []; setAside = []

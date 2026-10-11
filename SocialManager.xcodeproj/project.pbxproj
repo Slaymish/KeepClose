@@ -7,15 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		370285D1F0716AFD5EE29300 /* NativeSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = FAE1AF2B9BF0698EB4521E24 /* NativeSecurity */; };
 		3AA5F53A445919031F8D8651 /* AppLockController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDCEB556D5686FF8A4E831A /* AppLockController.swift */; };
 		6B425481A5D244529C2FB3DD /* AppPrivacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2232C5361D0CB03503323925 /* AppPrivacy.swift */; };
 		749BC5C15E54BA7C11ACA044 /* AppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4753706A57E1913B056C5070 /* AppView.swift */; };
-		7CB34E2B1259D299775F7733 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = E538E62CF796D6E313AF737F /* Sparkle */; };
+		7CB34E2B1259D299775F7733 /* NativeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5F887367316DBEF7A0F2060D /* NativeCore */; };
 		83BBD1A3FE7B3115EB3F4F7A /* AgentImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9BDF65DCBCC51159F178448 /* AgentImportView.swift */; };
 		866FADE59FC5626B8B729DD2 /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F828510B39C56F1AFBFE699 /* Person.swift */; };
+		8F638823EFB72EBA0634B4A7 /* NativeUI in Frameworks */ = {isa = PBXBuildFile; productRef = 7F24DDE303C3DF59ABA6373B /* NativeUI */; };
 		9A191D1B50718A5528DACC45 /* Repository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CF97B9C5A9B54DD0D6E0E4 /* Repository.swift */; };
 		A3588F4BD926BD248D755D38 /* AgentImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4426ECAED86B8FC3E6693B95 /* AgentImport.swift */; };
+		B61DA066B68E269EE8E8171D /* AgentInterchange in Frameworks */ = {isa = PBXBuildFile; productRef = 4D68D0BEBD7B8ADFA784C7A8 /* AgentInterchange */; };
 		BB3A36099CA5FF0000D12A5D /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622EEE96C957D14213AEC1AC /* Store.swift */; };
+		C519AC59C004ED431390C171 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = E538E62CF796D6E313AF737F /* Sparkle */; };
 		F43A8EB2EDE350611E5F9680 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9965A5B693388ECDCB24FB18 /* AppUpdater.swift */; };
 /* End PBXBuildFile section */
 
@@ -37,7 +41,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7CB34E2B1259D299775F7733 /* Sparkle in Frameworks */,
+				7CB34E2B1259D299775F7733 /* NativeCore in Frameworks */,
+				370285D1F0716AFD5EE29300 /* NativeSecurity in Frameworks */,
+				B61DA066B68E269EE8E8171D /* AgentInterchange in Frameworks */,
+				8F638823EFB72EBA0634B4A7 /* NativeUI in Frameworks */,
+				C519AC59C004ED431390C171 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,6 +116,10 @@
 			);
 			name = SocialManager;
 			packageProductDependencies = (
+				5F887367316DBEF7A0F2060D /* NativeCore */,
+				FAE1AF2B9BF0698EB4521E24 /* NativeSecurity */,
+				4D68D0BEBD7B8ADFA784C7A8 /* AgentInterchange */,
+				7F24DDE303C3DF59ABA6373B /* NativeUI */,
 				E538E62CF796D6E313AF737F /* Sparkle */,
 			);
 			productName = SocialManager;
@@ -138,6 +150,7 @@
 			mainGroup = BA544F30D2A78470D4673EB5;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				F20596843260D6A7B21CE931 /* XCRemoteSwiftPackageReference "HamishNativeLibrary" */,
 				E4CC4D2C965274DA5D689FEB /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -314,6 +327,8 @@
 				"INFOPLIST_KEY_SUEnableAutomaticChecks[sdk=macosx*]" = YES;
 				"INFOPLIST_KEY_SUFeedURL[sdk=macosx*]" = "https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml";
 				"INFOPLIST_KEY_SUPublicEDKey[sdk=macosx*]" = "GrB8p71JkrPcpzhFa5rdgDycN2MtTGIgB3wlj70h3Vo=";
+				"INFOPLIST_KEY_SURequireSignedFeed[sdk=macosx*]" = YES;
+				"INFOPLIST_KEY_SUVerifyUpdateBeforeExtraction[sdk=macosx*]" = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -343,6 +358,8 @@
 				"INFOPLIST_KEY_SUEnableAutomaticChecks[sdk=macosx*]" = YES;
 				"INFOPLIST_KEY_SUFeedURL[sdk=macosx*]" = "https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml";
 				"INFOPLIST_KEY_SUPublicEDKey[sdk=macosx*]" = "GrB8p71JkrPcpzhFa5rdgDycN2MtTGIgB3wlj70h3Vo=";
+				"INFOPLIST_KEY_SURequireSignedFeed[sdk=macosx*]" = YES;
+				"INFOPLIST_KEY_SUVerifyUpdateBeforeExtraction[sdk=macosx*]" = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -391,13 +408,41 @@
 				version = 2.10.0;
 			};
 		};
+		F20596843260D6A7B21CE931 /* XCRemoteSwiftPackageReference "HamishNativeLibrary" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Slaymish/HamishNativeLibrary";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.2.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4D68D0BEBD7B8ADFA784C7A8 /* AgentInterchange */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F20596843260D6A7B21CE931 /* XCRemoteSwiftPackageReference "HamishNativeLibrary" */;
+			productName = AgentInterchange;
+		};
+		5F887367316DBEF7A0F2060D /* NativeCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F20596843260D6A7B21CE931 /* XCRemoteSwiftPackageReference "HamishNativeLibrary" */;
+			productName = NativeCore;
+		};
+		7F24DDE303C3DF59ABA6373B /* NativeUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F20596843260D6A7B21CE931 /* XCRemoteSwiftPackageReference "HamishNativeLibrary" */;
+			productName = NativeUI;
+		};
 		E538E62CF796D6E313AF737F /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E4CC4D2C965274DA5D689FEB /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		FAE1AF2B9BF0698EB4521E24 /* NativeSecurity */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F20596843260D6A7B21CE931 /* XCRemoteSwiftPackageReference "HamishNativeLibrary" */;
+			productName = NativeSecurity;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

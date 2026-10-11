@@ -1,9 +1,5 @@
 import Foundation
-#if canImport(Darwin)
-import Darwin
-#else
-import Glibc
-#endif
+import NativeCore
 
 public struct ReminderPreferences: Codable, Equatable, Sendable {
     public var revision = UUID()
@@ -49,33 +45,20 @@ public struct RelationshipRepository: Sendable {
             return FileManager.default.temporaryDirectory.appendingPathComponent("KeepCloseDocumentationDemo", isDirectory: true)
         }
         #endif
-        #if os(macOS)
-        // The local Mac app and CLI share the original Application Support directory.
-        let home = String(cString: getpwuid(getuid())!.pointee.pw_dir)
-        return URL(fileURLWithPath: home).appendingPathComponent("Library/Application Support/KeepClose", isDirectory: true)
-        #else
-        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("KeepClose", isDirectory: true)
-        #endif
+        // Retain the original unsandboxed Mac app/CLI path and iOS sandbox path.
+        return try! AppDirectories.applicationSupportURL(appID: "KeepClose", realHomeOnMac: true)
     }
     private func locked<T>(_ operation: () throws -> T) throws -> T {
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let descriptor = open(directory.appendingPathComponent(".lock").path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
-        guard descriptor >= 0 else { throw RepositoryError.io("Couldn't open the data lock: \(String(cString: strerror(errno)))") }
-        defer { close(descriptor) }
-        guard flock(descriptor, LOCK_EX) == 0 else { throw RepositoryError.io("Couldn't lock relationship data.") }
-        defer { flock(descriptor, LOCK_UN) }
-        return try operation()
+        try LocalFileLock.withExclusiveLock(at: directory.appendingPathComponent(".lock"), operation)
     }
     private func read<T: Decodable>(_ name: String, fallback: T) throws -> T {
         let file = directory.appendingPathComponent(name)
         guard FileManager.default.fileExists(atPath: file.path) else { return fallback }
-        return try JSONDecoder().decode(T.self, from: Data(contentsOf: file))
+        return try NativeJSON.decode(T.self, from: Data(contentsOf: file), dates: .deferredToDate)
     }
     private func write<T: Encodable>(_ value: T, name: String) throws {
-        let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let file = directory.appendingPathComponent(name)
-        try encoder.encode(value).write(to: file, options: .atomic)
-        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+        try AtomicFile.write(NativeJSON.encode(value, dates: .deferredToDate, formatting: [.prettyPrinted, .sortedKeys]), to: file)
     }
     public func people() throws -> [Person] { try locked { try read("relationships.json", fallback: [Person]()) } }
     @discardableResult public func modifyPeople<T>(_ change: (inout [Person]) throws -> T) throws -> T {
@@ -102,8 +85,7 @@ public struct RelationshipRepository: Sendable {
                     try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
                     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: backups.path)
                     let backup = backups.appendingPathComponent("before-import-\(UUID().uuidString).json")
-                    try Data(contentsOf: originalFile).write(to: backup, options: .atomic)
-                    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: backup.path)
+                    try AtomicFile.write(Data(contentsOf: originalFile), to: backup)
                     backupPath = backup.path
                 }
                 for change in plan.changes where change.action != "unchanged" {
@@ -147,7 +129,7 @@ public struct RelationshipRepository: Sendable {
         try locked {
             let file = directory.appendingPathComponent("relationships.json")
             guard !FileManager.default.fileExists(atPath: file.path), FileManager.default.fileExists(atPath: legacy.path) else { return }
-            let people = try JSONDecoder().decode([Person].self, from: Data(contentsOf: legacy))
+            let people = try NativeJSON.decode([Person].self, from: Data(contentsOf: legacy), dates: .deferredToDate)
             try write(people, name: "relationships.json")
         }
     }

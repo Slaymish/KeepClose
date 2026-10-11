@@ -108,6 +108,11 @@ Use the project [release skill](.agents/skills/release/SKILL.md) when asked to t
 The macOS-only Sparkle package is pinned; keep its release-tool version aligned with the workflow.
 Build both platforms after changing dependencies. See docs/RELEASING.md for credential requirements.
 
+Shared native helpers come from HamishNativeLibrary; see docs/NATIVE_LIBRARY.md. Keep the existing version-1/2
+import contract, reference-date storage encoding, `.lock` path and domain merge/checkpoint transaction.
+Update shared helpers in the library rather than restoring local copies. Release archive/appcast wrappers
+use scripts from the resolved library version. No library upgrade alone updates an installed app.
+
 ## Two-way agent updates
 
 `import-prompt` includes all current records and per-provider changes since the last applied batch.

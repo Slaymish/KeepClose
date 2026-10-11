@@ -1,5 +1,6 @@
 import Foundation
 import SocialManagerCore
+import NativeCore
 import AppKit
 
 struct CLIError: LocalizedError { let message: String; var errorDescription: String? { message } }
@@ -47,8 +48,7 @@ struct Options {
     }
 }
 func emit<T: Encodable>(_ value: T) throws {
-    let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]; encoder.dateEncodingStrategy = .iso8601
-    print(String(decoding: try encoder.encode(value), as: UTF8.self))
+    print(String(decoding: try NativeJSON.encode(value, formatting: [.prettyPrinted, .sortedKeys]), as: UTF8.self))
 }
 func date(_ value: String) throws -> Date {
     guard let date = ISO8601DateFormatter().date(from: value) else { throw CLIError(message: "Use an ISO 8601 timestamp with timezone, e.g. 2026-10-11T02:00:00Z.") }; return date

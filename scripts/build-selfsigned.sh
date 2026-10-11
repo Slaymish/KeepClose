@@ -90,7 +90,19 @@ cli_zip="$staging/keepclose-macOS.zip"
 python3 scripts/make-archive.py "$dist/keepclose" "$cli_zip" --expect keepclose
 mv -f "$cli_zip" "$dist/keepclose-macOS.zip"
 
-( cd "$dist" && shasum -a 256 KeepClose-macOS.zip keepclose-macOS.zip > SHA256SUMS )
+# The existing app-specific update key authenticates archives and feed, independently of Apple signing.
+signer="${SPARKLE_BIN:-.build-release/xcode/SourcePackages/artifacts/sparkle/Sparkle/bin}/sign_update"
+[[ -x "$signer" ]] || { echo 'Sparkle release tools were not resolved by the app build.' >&2; exit 1; }
+key_arguments=(--account KeepClose)
+[[ -n "${SPARKLE_KEY_FILE:-}" ]] && key_arguments=(--ed-key-file "$SPARKLE_KEY_FILE")
+signature=$("$signer" "${key_arguments[@]}" -p "$dist/KeepClose-macOS.zip")
+public=$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$app/Contents/Info.plist")
+scripts/native-library-tool verify-update.swift "$dist/KeepClose-macOS.zip" "$public" "$signature"
+python3 scripts/generate-appcast.py --version "$version" --build "$build" --archive "$dist/KeepClose-macOS.zip" \
+  --signature "$signature" --output "$dist/appcast.xml"
+"$signer" "${key_arguments[@]}" "$dist/appcast.xml"
+"$signer" "${key_arguments[@]}" --verify "$dist/appcast.xml"
+( cd "$dist" && shasum -a 256 KeepClose-macOS.zip keepclose-macOS.zip appcast.xml > SHA256SUMS )
 
 
 echo
@@ -120,8 +132,8 @@ Developer ID certificate. On another Mac, macOS will block the first launch:
 1. Try to open the app, then go to **System Settings -> Privacy & Security** and choose **Open Anyway**.
    For the CLI: \`xattr -d com.apple.quarantine keepclose\`.
 
-Sparkle auto-update is not advertised by this release, so existing installs will not update from it.
-A later notarized release published through the Release workflow takes over normally." \
-    "$dist/KeepClose-macOS.zip" "$dist/keepclose-macOS.zip" "$dist/SHA256SUMS"
+The update archive and feed are signed with the existing Sparkle key. This authenticates updates,
+but does not provide Apple notarization or remove first-launch approval requirements." \
+    "$dist/KeepClose-macOS.zip" "$dist/keepclose-macOS.zip" "$dist/appcast.xml" "$dist/SHA256SUMS"
   echo "Published $tag."
 fi

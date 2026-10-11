@@ -47,8 +47,10 @@ scripts/build-selfsigned.sh 0.1.0 --publish    # also tags, pushes and creates t
 
 The result is signed but **not notarized**. Other Macs block the first launch until the user approves it
 in System Settings → Privacy & Security, or clears the quarantine flag on the CLI with
-`xattr -d com.apple.quarantine keepclose`. Releases published this way carry no Sparkle appcast, so
-existing installs do not auto-update from them; a later tagged Release workflow release takes over.
+`xattr -d com.apple.quarantine keepclose`. The helper now signs the update ZIP and appcast with the existing
+KeepClose Sparkle key and publishes the feed. Set `SPARKLE_KEY_FILE` to use an explicitly provided key file;
+otherwise it uses the existing `KeepClose` Keychain account. It never generates or rotates keys. Test updating
+an older installation before publishing. Sparkle authentication does not provide Apple notarization.
 
 `scripts/release-secrets.sh <setup|check|load|tag>` loads the six Apple secrets into the repository when
 the credentials do exist, and can tag the prepared release afterwards. `scripts/build-selfsigned.sh`

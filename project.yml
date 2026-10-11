@@ -12,6 +12,9 @@ settings:
     INFOPLIST_KEY_CFBundleDisplayName: Keep Close
     INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock your private relationships and notes in Keep Close.
 packages:
+  HamishNativeLibrary:
+    url: https://github.com/Slaymish/HamishNativeLibrary
+    minorVersion: 0.2.0
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.10.0
@@ -24,6 +27,8 @@ targets:
       macOS: '14.0'
     sources: [SocialManager]
     dependencies:
+      - package: HamishNativeLibrary
+        products: [NativeCore, NativeSecurity, AgentInterchange, NativeUI]
       - package: Sparkle
         destinationFilters: [macOS]
     settings:
@@ -36,6 +41,8 @@ targets:
         INFOPLIST_KEY_SUPublicEDKey[sdk=macosx*]: GrB8p71JkrPcpzhFa5rdgDycN2MtTGIgB3wlj70h3Vo=
         INFOPLIST_KEY_SUFeedURL[sdk=macosx*]: https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml
         INFOPLIST_KEY_SUEnableAutomaticChecks[sdk=macosx*]: YES
+        INFOPLIST_KEY_SURequireSignedFeed[sdk=macosx*]: YES
+        INFOPLIST_KEY_SUVerifyUpdateBeforeExtraction[sdk=macosx*]: YES
         INFOPLIST_KEY_SUAllowsAutomaticUpdates[sdk=macosx*]: YES
         ENABLE_APP_SANDBOX[sdk=macosx*]: NO
         LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]: "$(inherited) @executable_path/../Frameworks"

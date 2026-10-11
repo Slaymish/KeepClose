@@ -1,6 +1,15 @@
 {
-  "originHash" : "e721da7f9826abdffcb6185e886155efa2514bd6234475f1afa893e29eb258d6",
+  "originHash" : "e948e92a5320a6edf02bdc2cb5c62dbbd17d5887d215098b9ba275ae13b2eff6",
   "pins" : [
+    {
+      "identity" : "hamishnativelibrary",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Slaymish/HamishNativeLibrary",
+      "state" : {
+        "revision" : "8f8d507ba3e5ec093dbce4e5df1bc96bb7ffe4a0",
+        "version" : "0.2.0"
+      }
+    },
     {
       "identity" : "sparkle",
       "kind" : "remoteSourceControl",

@@ -2,6 +2,21 @@ import XCTest
 @testable import SocialManagerCore
 
 final class RepositoryTests: XCTestCase {
+    func testExistingDateEncodingAndLockFilenameRemainCompatible() throws {
+        let repository = try temporaryRepository()
+        var person = Person(name: "Fictional")
+        person.recordContact(kind: .conversation)
+        let legacy = JSONEncoder(); legacy.outputFormatting = [.prettyPrinted, .sortedKeys]
+        _ = try repository.people()
+        let file = repository.directory.appendingPathComponent("relationships.json")
+        let originalBytes = try legacy.encode([person])
+        try originalBytes.write(to: file)
+        XCTAssertEqual(try repository.people(), [person])
+        try repository.modifyPeople { _ in }
+        XCTAssertEqual(try Data(contentsOf: file), originalBytes)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: repository.directory.appendingPathComponent(".lock").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path + ".lock"))
+    }
     private func temporaryRepository() throws -> RelationshipRepository {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         addTeardownBlock { try? FileManager.default.removeItem(at: directory) }

@@ -1,0 +1,17 @@
+#!/bin/bash
+# Use the scripts from the same resolved library version as the app/CLI.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+tool="${1:?Supply an approved library release tool}"
+shift
+case "$tool" in
+  appcast.py|make-archive.py) runtime=python3 ;;
+  verify-update.swift) runtime=swift ;;
+  *) echo 'Unsupported library release tool' >&2; exit 1 ;;
+esac
+library="${HAMISH_NATIVE_LIBRARY_PATH:-.build/checkouts/hamishnativelibrary}"
+if [[ ! -f "$library/scripts/$tool" ]]; then
+  swift package resolve >/dev/null
+fi
+[[ -f "$library/scripts/$tool" ]] || { echo 'Resolve HamishNativeLibrary or set HAMISH_NATIVE_LIBRARY_PATH for local development.' >&2; exit 1; }
+exec "$runtime" "$library/scripts/$tool" "$@"
