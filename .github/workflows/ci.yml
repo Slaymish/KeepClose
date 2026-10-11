@@ -4,6 +4,12 @@ on:
     branches: [main]
   pull_request:
   workflow_call:
+    inputs:
+      checkout_ref:
+        description: Exact source ref to validate
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
 jobs:
@@ -11,6 +17,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || github.ref }}
       - name: Install project generator
         run: brew install xcodegen
       - name: Test core and agent CLI

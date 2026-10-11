@@ -2,11 +2,19 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing version tag to validate or publish
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
   group: keepclose-release
   cancel-in-progress: false
+env:
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
 jobs:
   route:
     runs-on: ubuntu-latest
@@ -16,15 +24,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.ref }}
       - name: Identify explicitly self-signed releases
         id: route
         shell: bash
         run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Supply an existing semantic version tag.' >&2; exit 1; }
+          # Checkout can replace an annotated tag with the peeled commit. Restore the
+          # actual tag object from origin before examining its publication route.
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
           # The local packaging script uses this exact annotated-tag subject.
           # Normal release tags retain the credential-gated notarized publication path.
-          subject=$(git for-each-ref --format='%(contents:subject)' "refs/tags/$GITHUB_REF_NAME")
-          kind=$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")
-          if [[ "$kind" == tag && "$subject" == "Keep Close ${GITHUB_REF_NAME#v} (self-signed, not notarized)" ]]; then
+          subject=$(git for-each-ref --format='%(contents:subject)' "refs/tags/$RELEASE_TAG")
+          kind=$(git cat-file -t "refs/tags/$RELEASE_TAG")
+          if [[ "$kind" == tag && "$subject" == "Keep Close ${RELEASE_TAG#v} (self-signed, not notarized)" ]]; then
             echo 'self_signed=true' >> "$GITHUB_OUTPUT"
             echo 'Signed local artifacts are published separately; all platform checks still run.'
           else
@@ -32,6 +45,8 @@ jobs:
           fi
   checks:
     uses: ./.github/workflows/ci.yml
+    with:
+      checkout_ref: ${{ inputs.release_tag || github.ref }}
   publish:
     needs: [checks, route]
     if: needs.route.outputs.self_signed != 'true'
@@ -49,13 +64,15 @@ jobs:
       SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       - name: Validate credentials and release metadata
         id: release
         run: |
           for variable in CERTIFICATE_P12_BASE64 KEEPCLOSE_SIGNING_IDENTITY NOTARY_KEY_ID NOTARY_ISSUER_ID NOTARY_PRIVATE_KEY SPARKLE_PRIVATE_KEY; do
             if [ -z "${!variable}" ]; then echo "::error::Missing $variable; see docs/RELEASING.md"; exit 1; fi
           done
-          python3 scripts/release.py verify "${GITHUB_REF_NAME#v}" --github-output "$GITHUB_OUTPUT"
+          python3 scripts/release.py verify "${RELEASE_TAG#v}" --github-output "$GITHUB_OUTPUT"
       - name: Install project generator
         run: brew install xcodegen
       - name: Import distribution certificate
@@ -94,7 +111,7 @@ jobs:
       - name: Publish GitHub release
         run: |
           python3 scripts/release.py notes '${{ steps.release.outputs.version }}' > "$RUNNER_TEMP/release-notes.md"
-          gh release create "$GITHUB_REF_NAME" .build-release/dist/KeepClose-macOS.zip .build-release/dist/keepclose-cli-macOS.zip .build-release/dist/appcast.xml .build-release/dist/SHA256SUMS --verify-tag --title "Keep Close ${{ steps.release.outputs.version }}" --notes-file "$RUNNER_TEMP/release-notes.md" --latest
+          gh release create "$RELEASE_TAG" .build-release/dist/KeepClose-macOS.zip .build-release/dist/keepclose-cli-macOS.zip .build-release/dist/appcast.xml .build-release/dist/SHA256SUMS --verify-tag --title "Keep Close ${{ steps.release.outputs.version }}" --notes-file "$RUNNER_TEMP/release-notes.md" --latest
       - name: Remove signing material
         if: always()
         run: |

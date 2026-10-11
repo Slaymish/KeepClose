@@ -53,7 +53,8 @@ otherwise it uses the existing `KeepClose` Keychain account. It never generates 
 an older installation before publishing. Sparkle authentication does not provide Apple notarization.
 Explicitly self-signed annotated tags still run the Release workflow's core/CLI tests and both
 platform builds, while skipping its Apple notarization/publication job; the local packaging path
-publishes the verified archives and feed instead.
+publishes the verified archives and feed instead. A manual Release workflow run accepts an existing
+`release_tag` for checking the tagged source again after workflow repairs, without moving its tag.
 
 `scripts/release-secrets.sh <setup|check|load|tag>` loads the six Apple secrets into the repository when
 the credentials do exist, and can tag the prepared release afterwards. `scripts/build-selfsigned.sh`
