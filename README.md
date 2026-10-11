@@ -56,7 +56,7 @@ Choose the **SocialManager** scheme and **My Mac**, an iPhone simulator, or your
 
 For the Mac, `scripts/run-mac.sh` builds, signs all nested components with an existing valid Apple Development identity, builds the CLI and launches the app. Set `KEEPCLOSE_SIGNING_IDENTITY` to choose an identity. The script does not create Apple certificates. Unsigned builds check compilation but don't reliably validate notifications.
 
-For agents working from source, use `scripts/keepclose help`; it builds the CLI incrementally. `project.yml` owns the Xcode configuration. Sparkle 2.10.0 is pinned and linked only on macOS; the core/CLI Swift package has no external dependencies. Debug builds do not run the updater.
+For agents working from source, use `scripts/keepclose help`; it builds the CLI incrementally. `project.yml` owns the Xcode configuration. Sparkle 2.10.0 is pinned and linked only on macOS; the core/CLI Swift package shares HamishNativeLibrary and does not depend on Sparkle. Debug builds do not run the updater.
 
 ## Relationships, context and suggestions
 
@@ -73,32 +73,49 @@ context, so a prompt can say *"Another board game evening?"* rather than *"You h
 30 days."* Anything you record yourself is marked as yours; anything an agent suggests stays labelled as
 unconfirmed until you edit it.
 
-Today offers up to three grounded opportunities. When nobody is ready it says so plainly and, if it has
-anything to work with, quietly lists a few people whose recorded context is available — an invitation, not
-a to-do list. The CLI returns every ready opportunity.
+Today is the landing screen: up to three specific opportunities, with the person, an invitation and a
+short reason. Provenance and timing sit behind **About this idea**. Notes, categories, settings and logs
+live on the person's page. On iPhone, tabs go directly to Today, People and Preferences; Mac retains a
+compact sidebar. A quiet day stays quiet — the app does not fill it with administrative tasks or ideas
+that are waiting for their rhythm.
 
-Contact logs distinguish **I reached out**, **They reached out**, **We caught up**, **I replied**, and
-**Everyday contact**. Catch-ups optionally record who initiated. Incoming messages create a reply
-suggestion; a reply or catch-up closes earlier incoming messages. An incoming item can also be marked
-"No reply needed" without pretending a conversation happened. Backdated incoming logs are matched against
-already-recorded later replies/catch-ups.
+People is alphabetical, searchable by name, notes, categories and interests, and filterable by intention
+or category. Grow and Maintain have equal standing. Rows place identity, a short piece of context and
+an optional ready opportunity in a single flexible column; there are no unexplained suggestion counts.
+
+Contact logs distinguish **Message or invitation sent**, **They reached out**, **We spent time together**,
+**I replied** and **Everyday contact**. Initiation is optional and never becomes a score or a prompt to
+repay someone. Opening a contact app never logs anything. Quick actions confirm what already happened;
+Today shows an acknowledgement with Undo. On the person page, logs can be corrected or removed.
 
 Rules are deliberately inspectable:
 
-- An outstanding incoming message suggests replying, even if your intention is to give more space.
-- A sent message, reply, or meaningful catch-up starts a new rhythm. Everyday contact in passing does not.
-- Three recent recorded contacts initiated by them can suggest taking the initiative once your rhythm is ready. An incoming message followed by its catch-up counts as one initiation.
-- Two consecutive outreach attempts with no later logged reply or conversation suggest giving them room. This is an inference from your logs, not evidence that they ignored you.
-- Grow favours time together and shared activities; Maintain favours a message, a call or a shared interest; Unsure suggests choosing a direction. Give more space and Pause suppress proactive ideas entirely.
-- Recorded ideas are offered when they are ready. An idea with a stated cadence ("roughly every 90 days") waits that long after you last did it; one without a cadence is available straight away.
-- Postponing moves the next prompt. It is not counted anywhere.
+- One recorded outgoing message suppresses further proactive ideas until there is a later recorded
+  incoming message, reply or shared time, or you explicitly choose **Allow new ideas**. Silence is not
+  interpreted. Sending the invitation is already a successful interaction.
+- An incoming message offers an optional reply, including for Give Space. **Leave it here** resolves it
+  without recording contact. Reply/shared-time events close earlier incoming messages. Automatic
+  resolutions created by this version reopen when their responding event is corrected or removed;
+  explicit and legacy resolutions remain authoritative.
+- Plans are separate records for time you have actually agreed together. They do not invent contact.
+  Upcoming plans appear quietly on Today; past plans never become overdue. A plan keeps additional
+  invitations quiet until you mark shared time or set it aside. Undoing its shared-time log restores it.
+- Give Space and Pause suppress proactive opportunities. Grow and Maintain may influence the kind
+  of recorded idea selected within one person's context; neither ranks one person above another.
+- Specific user-recorded ideas can be offered. Imported uncertain ideas need supporting rationale or
+  a recorded interest; broad category tags and generic templates are insufficient. Unsupported ideas
+  remain editable rather than being deleted. Unconfirmed rationale is disclosed with its provenance,
+  not asserted as shared history. The local phrase guard excludes common pressure/intimacy prompts;
+  it is conservative, not a general semantic validator of imported prose.
+- The app uses recorded ideas rather than automatically interpreting free-form notes. A shared project
+  can inform an imported or manually recorded invitation; a tag like Nearby cannot fabricate one.
+  With little context, a person's page offers a plain optional hello and Today stays quiet.
+- A completed activity waits its stated cadence, or the person's rhythm when none was specified.
+  A sent invitation is not a completed activity. Deferring uses the chosen day rather than restarting
+  an activity cadence. Permanent dismissals remain protected against repeated imports.
 
-Editable starting rhythms are 14 days, 7 for a Partner label, or 30 for an Acquaintance label.
-Work/Flatmate/Nearby contexts allow at least 21 days between intentional check-ins. Grow halves this
-starting rhythm (minimum 3 days). Give more space retains a 45-day or longer rhythm but produces no
-proactive suggestions. These are product defaults, not measures of relationship health. Custom rhythms
-take precedence and are never automatically adjusted. A rhythm decides when a prompt may appear, never
-what you should say or whether you should reach out.
+Existing custom rhythms are preserved. Editable starting rhythms remain product preferences, not
+measures of affection or relationship health. Nothing is counted as missed.
 
 ### Feedback works in one direction only
 
@@ -116,9 +133,11 @@ The app opens your configured contact app; you send the message yourself. Openin
 Suggestions use manually logged history and recorded context; no message or contact-account access is
 involved.
 
-An optional daily local notification at an adjustable time (6 pm by default) invites you to check in, even
-if nobody is due. Names are optional and only scheduled when the OS uses When Unlocked previews; see
-privacy details below.
+Optional local reminders use your requested time (6 pm by default) and schedule only the next check-in
+when there is something worth suggesting. They are one-shot, so a stale opportunity cannot repeat while
+the app is closed. Open Keep Close to refresh future reminders. The status distinguishes an enabled
+preference with nothing to suggest from an actually scheduled notification. Names retain the existing
+When Unlocked privacy rules; see below.
 
 ## Limits and next decisions
 
@@ -126,11 +145,10 @@ On Mac, app and CLI share `~/Library/Application Support/KeepClose`. The local M
 
 Keep Close reduces the effort of choosing and starting. It cannot guarantee follow-through, and it does not try to. It deliberately avoids overdue scores, streaks and increasing alerts.
 
-Possible next work: iCloud sync, contact import with permission, widgets, a shared "connection session" for a group, data export and undo for contact logs, and learning more from explicit feedback than a single local ordering. The current version supports manual data entry, agent JSON imports/updates and manual contact logging. Contact history and person deletion have no undo yet; deletion asks for confirmation.
+Possible next work: iCloud sync, contact import with permission, widgets, a shared "connection session" for a group, data export and undo for contact logs, and learning more from explicit feedback than a single local ordering. The current version supports manual data entry, agent JSON imports/updates and manual contact logging. Contact logs have Undo after quick actions and can be corrected or removed on the person page. Person deletion asks for confirmation.
 
 Suggestion quality depends on what has been recorded. A person with no interests, memories or ideas can
-only be offered a generic hello; that is intentional, and the interface invites you to add context rather
-than inventing it.
+be offered a plain optional hello on their page; it does not become a Today task.
 
 ## Agent CLI
 
@@ -162,14 +180,14 @@ scripts/keepclose reminders on --time 18:00 --launch
 scripts/keepclose reminders
 ```
 
-Also supports `show`, `resolve ID --entry ENTRY_UUID`, `open`, `delete ID --yes`, `reminders off` and `path`, plus `idea --edit/--restore/--remove`, `memory --edit/--forget` and `interest --edit/--remove`. `open` never sends or logs contact. CLI writes reload the latest data under a lock and change only the requested fields. Use `--data-dir PATH` for an isolated dataset. Mac CLI access does not give agents access to iPhone data.
+Also supports `show`, `resolve ID --entry ENTRY_UUID`, `open`, `delete ID --yes`, `reminders off` and `path`, plus `unlog ID --entry ENTRY_UUID`, `plan ID --title TEXT --at ISO8601 [--idea IDEA_UUID]`, `plan ID --complete PLAN_UUID [--at ISO8601]`, `plan ID --cancel PLAN_UUID`, and `log --idea IDEA_UUID`, plus `idea --edit/--restore/--remove`, `memory --edit/--forget` and `interest --edit/--remove`. `open` never sends or logs contact. CLI writes reload the latest data under a lock and change only the requested fields. Use `--data-dir PATH` for an isolated dataset. Mac CLI access does not give agents access to iPhone data.
 
 Context commands record where information came from (`--source me|them|memory|agent|unsure`) and how well it
 is known (`--confidence known|unsure|suggested`). An agent should never mark its own inference as `known`.
 `pass ID --idea IDEA_UUID` sets an idea aside so it will not be offered again and imports will not revive it;
 `useful ID --idea IDEA_UUID` notes that a suggestion helped. Neither logs contact.
 
-Reminders run through the app, which owns the OS notification permission. The CLI stores the requested schedule; `reminders` reports both the request and the last actual status reported by the app. The app must run at least once to apply changes. Once the OS has scheduled a reminder, the app need not stay open for delivery. Scheduling status does not guarantee a banner is displayed: system settings and Focus can affect presentation.
+Reminders run through the app, which owns the OS notification permission. The CLI stores the requested schedule; `reminders` reports both the request and the last actual status reported by the app. The app must run at least once to apply changes. Once the OS has scheduled the next reminder, the app need not stay open for that delivery. Future reminders are refreshed when the app runs. Scheduling status does not guarantee a banner is displayed: system settings and Focus can affect presentation.
 
 ## Development checks
 
@@ -180,7 +198,7 @@ xcodebuild -project SocialManager.xcodeproj -scheme SocialManager -destination '
 xcodebuild -project SocialManager.xcodeproj -scheme SocialManager -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-On upgrade, original labels become relationship categories, original notes remain notes, and existing rhythms remain custom. Legacy history is preserved and excluded from inferences about unanswered messages because the first version did not track incoming replies. Recorded context, ideas and feedback are new optional fields, so existing files load unchanged; an existing intention counts as a deliberate choice and will not be overwritten by an import.
+On upgrade, original labels become relationship categories, original notes remain notes, and existing rhythms remain custom. Legacy history is preserved and excluded from inferences about unanswered messages because the first version did not track incoming replies. Recorded context, ideas, feedback and plans default to empty when absent. Contact idea links and automatic-resolution links are optional. No destructive migration or eager rewrite is performed; existing files load unchanged. Use this version of both app and CLI after creating plans — older writers cannot preserve fields they do not know. An existing intention counts as a deliberate choice and will not be overwritten by an import.
 
 ## Import from ChatGPT or Claude
 
@@ -296,3 +314,14 @@ scripts/keepclose import /private/path/keepclose-import.json --apply
 ## Releases
 
 Tags such as `v0.1.0` run tests and publish signed/notarized universal Mac app and CLI downloads plus a signed Sparkle feed. Apple distribution secrets must be configured first. Read [the release guide](docs/RELEASING.md) or ask an agent to use the project's [release skill](.agents/skills/release/SKILL.md). User-facing changes live in [CHANGELOG.md](CHANGELOG.md).
+
+## Birthdays and native Contacts
+
+People can have a birthday with an optional birth year. Today shows nearby birthdays; Preferences
+can enable birthday-day and two-week gift reminders on each device. Friend/Family gift thoughts
+are optional, with per-person controls and Give Space/Pause boundaries.
+
+Use the import menu to select all or individual native Contacts. Links can follow changes while
+preserving your Keep Close edits, with careful phone/email matching and review for possible name
+duplicates. Details also offers a backed-up person merge with Undo. See
+[Birthdays, Contacts and duplicates](docs/BIRTHDAYS_CONTACTS.md) for behavior, queue limits and CLI use.

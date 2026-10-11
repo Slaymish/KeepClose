@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-12
+
+### A calmer way to connect
+
+- Today is now the landing screen, with up to three grounded opportunities, gentle actions, upcoming plans and a quiet empty state when there is nothing useful to suggest.
+- People puts names and shared context first, with search and filters that give Grow and Maintain relationships equal standing. Layouts adapt to long names, larger text and light or dark appearance.
+- Suggestions use recorded interests, projects and memories without presenting unverified ideas as shared facts. Limited context no longer produces artificial personalised prompts.
+- Sending an invitation is acknowledged separately from having a conversation or making a plan. An unanswered invitation suppresses further proactive suggestions until it is resolved; silence is never treated as failure.
+- Optional contact logging is lighter, with correction and Undo. Plans can be recorded, completed or cancelled without turning relationships into tasks.
+
+### Birthdays and your people
+
+- Add birthdays with an optional birth year, birthday-day reminders and a gentle gift thought two weeks ahead. Friends and family receive gift thoughts by default; Give Space and Pause silence birthday reminders too.
+- Optionally import all or selected Apple Contacts and link them to existing people. Names, contact details and birthdays can follow Contacts changes while preserving your Keep Close edits; nothing is written back to Contacts.
+- Review possible duplicates through a searchable chooser. Merge duplicate people while preserving notes, histories, plans, contact details and links, with a private backup and Undo.
+- Existing data and version-1/version-2 agent imports remain compatible. The CLI supports birthdays, merging, invitation resolution and plans.
+
+### Paired devices
+
+- Optional same-network pairing lets Mac and iPhone exchange relationship data, with conflict review and recovery. Device authentication, permissions and notification settings remain local to each device.
+
 ## [0.1.0] - 2026-10-11
 
 ### Grounded suggestions instead of day counting

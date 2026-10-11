@@ -10,7 +10,7 @@ public enum RelationshipIntention: String, Codable, CaseIterable, Sendable {
 public enum ContactKind: String, Codable, CaseIterable, Sendable, Identifiable {
     public var id: String { rawValue }
     case outreach, incoming, conversation, reply, ambient
-    public var title: String { switch self { case .outreach: "I reached out"; case .incoming: "They reached out"; case .conversation: "We caught up"; case .reply: "I replied"; case .ambient: "Everyday contact" } }
+    public var title: String { switch self { case .outreach: "Message or invitation sent"; case .incoming: "They reached out"; case .conversation: "We spent time together"; case .reply: "I replied"; case .ambient: "Everyday contact" } }
 }
 public enum Initiator: String, Codable, CaseIterable, Sendable { case me, them, mutual, unknown }
 
@@ -241,19 +241,38 @@ public struct ContactEntry: Identifiable, Codable, Equatable, Sendable {
     public var initiator: Initiator = .me
     public var resolvedAt: Date?
     public var tracksResponse = true
+    public var ideaId: UUID?
+    /// Links automatic reply resolution to its event, so correcting a log can reopen it.
+    public var responseEntryId: UUID?
     public init(date: Date, note: String, kind: ContactKind = .outreach, initiator: Initiator = .me) {
         self.date = date; self.note = note; self.kind = kind; self.initiator = initiator
     }
-    private enum CodingKeys: String, CodingKey { case id, date, note, kind, initiator, resolvedAt, tracksResponse }
+    private enum CodingKeys: String, CodingKey { case id, date, note, kind, initiator, resolvedAt, tracksResponse, ideaId, responseEntryId }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id); date = try c.decode(Date.self, forKey: .date); note = try c.decode(String.self, forKey: .note)
         kind = try c.decodeIfPresent(ContactKind.self, forKey: .kind) ?? .outreach
         initiator = try c.decodeIfPresent(Initiator.self, forKey: .initiator) ?? (kind == .incoming ? .them : .me)
         resolvedAt = try c.decodeIfPresent(Date.self, forKey: .resolvedAt)
+        ideaId = try c.decodeIfPresent(UUID.self, forKey: .ideaId)
+        responseEntryId = try c.decodeIfPresent(UUID.self, forKey: .responseEntryId)
         tracksResponse = try c.decodeIfPresent(Bool.self, forKey: .tracksResponse) ?? c.contains(.kind)
     }
 }
+/// A commitment is separate from both an invitation and time actually spent together.
+public struct ConnectionPlan: Identifiable, Codable, Equatable, Sendable {
+    public enum Status: String, Codable, Sendable { case planned, happened, cancelled }
+    public var id: UUID
+    public var title: String
+    public var date: Date
+    public var ideaId: UUID?
+    public var status: Status
+    public var completedContactId: UUID?
+    public init(id: UUID = UUID(), title: String, date: Date, ideaId: UUID? = nil) {
+        self.id = id; self.title = title; self.date = date; self.ideaId = ideaId; status = .planned
+    }
+}
+
 public struct RelationshipSuggestion: Codable, Equatable, Sendable {
     public enum Action: String, Codable, Sendable { case reply, hello, takeInitiative, timeTogether, giveSpace, reflect, paused, later }
     public var action: Action
@@ -520,6 +539,13 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
     public var paused = false
     public var connection = ConnectionContext()
     public var feedback: [SuggestionFeedback] = []
+    public var plans: [ConnectionPlan] = []
+    public var birthday: Birthday?
+    public var birthdayReminder = true
+    public var giftReminder: GiftReminder = .automatic
+    public var contactLinks: [SystemContactLink] = []
+    public var alternateContactDetails: [PersonContactDetail] = []
+    public var mergedPersonIDs: [UUID] = []
 
     public init(name: String, circle: String = "Friend", rhythmDays: Int = 14, method: ContactMethod = .message, address: String = "", context: String = "", createdAt: Date = .now) {
         self.name = name; self.circle = circle; self.relationshipTypes = [circle]; self.rhythmDays = max(1, rhythmDays)
@@ -531,7 +557,7 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
     static func derivedIntentionChosen(_ intention: RelationshipIntention, explicit: Bool? = nil) -> Bool {
         explicit ?? (intention != .unsure)
     }
-    private enum CodingKeys: String, CodingKey { case id, name, circle, relationshipTypes, contexts, importSources, intention, intentionChosen, rhythmDays, rhythmIsCustom, method, address, context, createdAt, contacts, snoozedUntil, deferrals, paused, connection, feedback }
+    private enum CodingKeys: String, CodingKey { case id, name, circle, relationshipTypes, contexts, importSources, intention, intentionChosen, rhythmDays, rhythmIsCustom, method, address, context, createdAt, contacts, snoozedUntil, deferrals, paused, connection, feedback, plans, birthday, birthdayReminder, giftReminder, contactLinks, mergedPersonIDs, alternateContactDetails }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id); name = try c.decode(String.self, forKey: .name)
@@ -553,6 +579,13 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
         paused = try c.decodeIfPresent(Bool.self, forKey: .paused) ?? false
         connection = try c.decodeIfPresent(ConnectionContext.self, forKey: .connection) ?? ConnectionContext()
         feedback = try c.decodeIfPresent([SuggestionFeedback].self, forKey: .feedback) ?? []
+        plans = try c.decodeIfPresent([ConnectionPlan].self, forKey: .plans) ?? []
+        birthday = try c.decodeIfPresent(Birthday.self, forKey: .birthday)
+        birthdayReminder = try c.decodeIfPresent(Bool.self, forKey: .birthdayReminder) ?? true
+        giftReminder = try c.decodeIfPresent(GiftReminder.self, forKey: .giftReminder) ?? .automatic
+        contactLinks = try c.decodeIfPresent([SystemContactLink].self, forKey: .contactLinks) ?? []
+        mergedPersonIDs = try c.decodeIfPresent([UUID].self, forKey: .mergedPersonIDs) ?? []
+        alternateContactDetails = try c.decodeIfPresent([PersonContactDetail].self, forKey: .alternateContactDetails) ?? []
     }
     /// Records a deliberate choice, so later imports cannot silently change it.
     public mutating func chooseIntention(_ value: RelationshipIntention) {
@@ -579,21 +612,80 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
         calendar.startOfDay(for: nextDue(calendar: calendar)) <= calendar.startOfDay(for: now)
     }
     public func isDue(at now: Date = .now, calendar: Calendar = .current) -> Bool { suggestion(at: now, calendar: calendar).ready }
-    public mutating func recordContact(at date: Date = .now, note: String = "", kind: ContactKind = .outreach, initiator: Initiator? = nil) {
+    @discardableResult public mutating func recordContact(at date: Date = .now, note: String = "", kind: ContactKind = .outreach, initiator: Initiator? = nil, ideaId: UUID? = nil) -> UUID {
         let starter = initiator ?? (kind == .incoming ? .them : kind == .conversation ? .unknown : kind == .ambient ? .mutual : kind == .reply ? .them : .me)
         var entry = ContactEntry(date: date, note: note, kind: kind, initiator: starter)
-        if kind == .incoming {
-            entry.resolvedAt = contacts.filter { [.reply, .conversation].contains($0.kind) && $0.date >= date }.map(\.date).min()
-        }
+        entry.ideaId = ideaId
         contacts.append(entry)
-        if kind == .reply || kind == .conversation {
-            for i in contacts.indices where contacts[i].kind == .incoming && contacts[i].date <= date && contacts[i].resolvedAt == nil { contacts[i].resolvedAt = date }
-        }
+        reconcileResponses()
         if [.outreach, .reply, .conversation].contains(kind) { snoozedUntil = nil; deferrals = 0 }
+        return entry.id
+    }
+    mutating func reconcileResponses() {
+        for i in contacts.indices where contacts[i].kind == .incoming {
+            // A manual resolution (and legacy resolution without a link) is authoritative.
+            guard contacts[i].resolvedAt == nil || contacts[i].responseEntryId != nil else { continue }
+            let response = contacts.filter { [.reply, .conversation].contains($0.kind) && $0.date >= contacts[i].date }
+                .min { $0.date < $1.date }
+            contacts[i].resolvedAt = response?.date
+            contacts[i].responseEntryId = response?.id
+        }
     }
     public mutating func resolveIncoming(_ id: UUID, at date: Date = .now) {
-        if let i = contacts.firstIndex(where: { $0.id == id && $0.kind == .incoming }) { contacts[i].resolvedAt = date }
+        if let i = contacts.firstIndex(where: { $0.id == id && $0.kind == .incoming }) {
+            contacts[i].resolvedAt = date; contacts[i].responseEntryId = nil
+        }
     }
+    /// An explicit choice to allow new opportunities; it never invents a response.
+    public mutating func resolveOutreach(_ id: UUID, at date: Date = .now) {
+        if let i = contacts.firstIndex(where: { $0.id == id && $0.kind == .outreach }) { contacts[i].resolvedAt = date }
+    }
+    public var pendingOutreach: [ContactEntry] {
+        contacts.filter { entry in
+            entry.kind == .outreach && entry.tracksResponse && entry.resolvedAt == nil &&
+            !contacts.contains { [.incoming, .reply, .conversation].contains($0.kind) && $0.date >= entry.date }
+        }
+    }
+    @discardableResult public mutating func removeContact(_ id: UUID) -> Bool {
+        guard contacts.contains(where: { $0.id == id }) else { return false }
+        contacts.removeAll { $0.id == id }
+        for i in plans.indices where plans[i].completedContactId == id { plans[i].status = .planned; plans[i].completedContactId = nil }
+        reconcileResponses()
+        return true
+    }
+    @discardableResult public mutating func correctContact(_ original: ContactEntry, date: Date, note: String, kind: ContactKind, initiator: Initiator) -> Bool {
+        guard let i = contacts.firstIndex(where: { $0 == original }) else { return false }
+        contacts[i].date = date; contacts[i].note = note; contacts[i].kind = kind
+        contacts[i].initiator = kind == .conversation ? initiator : kind == .incoming || kind == .reply ? .them : kind == .ambient ? .mutual : .me
+        if kind != original.kind || date != original.date {
+            contacts[i].resolvedAt = nil; contacts[i].responseEntryId = nil
+        }
+        if kind != .conversation {
+            for index in plans.indices where plans[index].completedContactId == original.id {
+                plans[index].status = .planned; plans[index].completedContactId = nil
+            }
+        }
+        reconcileResponses()
+        return true
+    }
+    public var activePlans: [ConnectionPlan] { plans.filter { $0.status == .planned }.sorted { $0.date < $1.date } }
+    @discardableResult public mutating func addPlan(title: String, date: Date, ideaId: UUID? = nil) -> ConnectionPlan? {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return nil }
+        let plan = ConnectionPlan(title: title, date: date, ideaId: ideaId)
+        plans.append(plan)
+        return plan
+    }
+    @discardableResult public mutating func finishPlan(_ id: UUID, at date: Date = .now, now: Date = .now) -> UUID? {
+        guard let i = plans.firstIndex(where: { $0.id == id && $0.status == .planned }), date <= now else { return nil }
+        let entry = recordContact(at: date, note: plans[i].title, kind: .conversation, initiator: .mutual, ideaId: plans[i].ideaId)
+        plans[i].status = .happened; plans[i].completedContactId = entry
+        return entry
+    }
+    public mutating func cancelPlan(_ id: UUID) {
+        if let i = plans.firstIndex(where: { $0.id == id && $0.status == .planned }) { plans[i].status = .cancelled }
+    }
+
     /// Postpone without keeping count. There is no persistence score, so choosing to wait
     /// never accumulates as a mark against the relationship.
     public mutating func snooze(until date: Date) { snoozedUntil = date }
@@ -640,7 +732,6 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
         connection.ideas[index].reminder = connection.ideas[index].reminder.isEmpty ? ConnectionIdea.defaultReminder(kind: connection.ideas[index].kind, activity: connection.ideas[index].activity) : connection.ideas[index].reminder
         connection.ideas[index].confidence = .known
         connection.ideas[index].sources = [.me]
-        connection.ideas[index].dismissed = false
         return true
     }
     /// Dismiss without deleting, so imports know not to bring it back.
@@ -654,6 +745,7 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
     public mutating func restoreIdea(_ id: UUID) -> Bool {
         guard let index = connection.ideas.firstIndex(where: { $0.id == id }) else { return false }
         connection.ideas[index].dismissed = false
+        feedback.removeAll { $0.ideaId == id && $0.signal == .notForMe }
         return true
     }
     @discardableResult
@@ -724,6 +816,12 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
         connection.rituals.append(ritual)
         return ritual
     }
+    @discardableResult public mutating func restoreRitual(_ id: UUID) -> Bool {
+        guard let index = connection.rituals.firstIndex(where: { $0.id == id }) else { return false }
+        connection.rituals[index].dismissed = false
+        feedback.removeAll { $0.ideaId == id && $0.signal == .notForMe }
+        return true
+    }
     @discardableResult
     public mutating func removeRitual(_ id: UUID) -> Bool {
         let before = connection.rituals.count
@@ -741,7 +839,7 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
     public func lastFeedback(forIdea id: UUID) -> SuggestionFeedback? { feedback.last { $0.ideaId == id } }
     /// The user has said this specific idea isn't for them. Respect it permanently.
     public func passedOnIdea(_ id: UUID) -> Bool { feedback.contains { $0.ideaId == id && $0.signal == .notForMe } }
-    public var lastActioned: Date? { feedback.map(\.at).max() }
+    public var lastActioned: Date? { feedback.filter { $0.signal != .helpful }.map(\.at).max() }
     public var helpfulIdeas: Set<UUID> { Set(feedback.filter { $0.signal == .helpful || $0.signal == .done }.compactMap(\.ideaId)) }
     /// Action-level feedback, used when no idea was attached (for example a plain check-in).
     public func passedOnAction(_ action: RelationshipSuggestion.Action) -> Bool { feedback.contains { $0.ideaId == nil && $0.action == action && $0.signal == .notForMe } }
@@ -754,13 +852,13 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
     /// the caller also wants ideas that are still waiting their turn (for quiet suggestions).
     public func opportunities(at now: Date = .now, calendar: Calendar = .current, limit: Int = 3, readyOnly: Bool = true) -> [ConnectionOpportunity] {
         // Giving space or pausing means no proactive ideas at all, however good they are.
-        guard !paused, intention != .space else { return [] }
+        guard !paused, intention != .space, pendingOutreach.isEmpty, activePlans.isEmpty, snoozedUntil.map({ calendar.startOfDay(for: $0) > calendar.startOfDay(for: now) }) != true else { return [] }
         let lastContactDate = lastContact
         let interestWords = connection.interestKeywords
-        let recentText = contacts.suffix(8).map { $0.note.lowercased() }.joined(separator: " ")
+        let recentText = contacts.sorted { $0.date > $1.date }.prefix(8).map { $0.note.lowercased() }.joined(separator: " ")
         var candidates: [(opportunity: ConnectionOpportunity, score: Int)] = []
         for idea in connection.ideas where idea.isActionable {
-            if passedOnIdea(idea.id) { continue }
+            if passedOnIdea(idea.id) || !isWorthOffering(idea) { continue }
             let readyAt = ideaReadyAt(idea, calendar: calendar)
             let ready = calendar.startOfDay(for: readyAt) <= calendar.startOfDay(for: now)
             let text = idea.activity.lowercased()
@@ -798,12 +896,14 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
             }
             candidates.append((ConnectionOpportunity(ideaId: idea.id, activity: idea.activity, kind: idea.kind, prompt: idea.reminder.isEmpty ? idea.activity : idea.reminder, reason: idea.reason, timing: idea.timing, grounded: sharedGround || recentMention || !idea.reason.isEmpty, sources: idea.sources, confidence: idea.confidence, isRitual: false, ready: ready, nextDate: ready ? nil : readyAt), score))
         }
-        for ritual in connection.rituals where !ritual.dismissed && !ritual.title.isEmpty {
+        for ritual in connection.rituals where !ritual.dismissed && !ritual.title.isEmpty && !passedOnIdea(ritual.id) {
+            guard isSafeConnectionText([ritual.title, ritual.note].joined(separator: " ")),
+                  ritual.confidence == .known || !ritual.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
             let readyAt = ritualReadyAt(ritual, calendar: calendar)
             let ready = calendar.startOfDay(for: readyAt) <= calendar.startOfDay(for: now)
-            var score = 14 + (intention == .grow ? 18 : intention == .maintain ? 6 : 0)
+            var score = 20
             if !ready { score -= 24 }
-            candidates.append((ConnectionOpportunity(ideaId: ritual.id, activity: ritual.title, kind: .ritual, prompt: "Keep \(ritual.title.prefix(1).lowercased() + ritual.title.dropFirst()) going", reason: ritual.note, timing: nil, grounded: !ritual.note.isEmpty, sources: ritual.sources, confidence: ritual.confidence, isRitual: true, ready: ready, nextDate: ready ? nil : readyAt), score))
+            candidates.append((ConnectionOpportunity(ideaId: ritual.id, activity: ritual.title, kind: .ritual, prompt: ritual.title, reason: ritual.note, timing: nil, grounded: !ritual.note.isEmpty, sources: ritual.sources, confidence: ritual.confidence, isRitual: true, ready: ready, nextDate: ready ? nil : readyAt), score))
         }
         return candidates
             .filter { !readyOnly || $0.opportunity.ready }
@@ -826,11 +926,11 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
     /// When an idea becomes available again. Only an actual outcome (doing it, or setting it
     /// aside for now) moves this clock; marking something useful does not postpone it.
     ///
-    /// Without a stated cadence, an idea is available as soon as it is recorded and stays
-    /// available: the rhythm already decides when the person's next prompt is due. A stated
-    /// cadence (for example "every Thursday") is what introduces a wait.
+    /// A completed activity waits its stated cadence, or the person's rhythm if none was set.
+    /// A deferral uses snoozedUntil rather than starting the activity cadence.
     private func ideaReadyAt(_ idea: ConnectionIdea, calendar: Calendar) -> Date {
-        guard let cadence = idea.cadenceDays, let outcome = lastOutcome(forIdea: idea.id) else { return createdAt }
+        guard let outcome = lastOutcome(forIdea: idea.id) else { return createdAt }
+        let cadence = idea.cadenceDays ?? rhythmDays
         return calendar.date(byAdding: .day, value: cadence, to: outcome) ?? outcome
     }
     /// Rituals are tracked by when they were last kept, not by unrelated one-to-one contact.
@@ -839,7 +939,9 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
         return calendar.date(byAdding: .day, value: ritual.cadenceDays, to: base) ?? base
     }
     private func lastOutcome(forIdea id: UUID) -> Date? {
-        feedback.filter { $0.ideaId == id && ($0.signal == .done || $0.signal == .snoozed) }.map(\.at).max()
+        let explicit = feedback.filter { $0.ideaId == id && $0.signal == .done }.map(\.at)
+        let shared = contacts.filter { $0.ideaId == id && $0.kind == .conversation }.map(\.date)
+        return (explicit + shared).max()
     }
     private func timingMatches(_ timing: IdeaTiming, at date: Date, calendar: Calendar) -> Bool {
         let weekday = calendar.component(.weekday, from: date)
@@ -863,13 +965,15 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
             return result(.later, "Time you've set aside", "You postponed this suggestion until \(snooze.formatted(date: .abbreviated, time: .omitted)).", false, snooze)
         }
         if !pendingIncoming.isEmpty {
-            return result(.reply, "Reply to \(name)", "They reached out and you haven't logged a reply. Replying comes before starting another conversation.", true)
+            return result(.reply, "Reply to \(name)", "A message you recorded is open, if you’d like to reply. You can also leave it here.", true)
         }
         if intention == .space { return result(.giveSpace, "Give this relationship room", "You chose more space. There are no proactive outreach reminders; incoming messages can still prompt a reply.", false) }
         let ready = isReady(at: now, calendar: calendar)
-        let awaitingReply = unansweredOutreach()
-        if awaitingReply >= 2 {
-            return result(.giveSpace, "Give them room", "You've logged \(awaitingReply) outreach attempts without a later logged response or conversation. This is based only on what you recorded. Consider waiting; you can still reach out manually.", false)
+        if !pendingOutreach.isEmpty {
+            return result(.later, "You've reached out", "Your message is sent. There's nothing else to do here; new ideas can wait.", false)
+        }
+        if !activePlans.isEmpty {
+            return result(.later, "You have something planned", "Enjoy the time you've arranged. No extra invitation needed.", false)
         }
         let idea = bestOpportunity(at: now, calendar: calendar)
         if let idea, ready {
@@ -878,27 +982,33 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
         if !ready {
             let next = nextDue(calendar: calendar)
             // A recorded way of connecting can still be worth showing while the rhythm waits.
-            let reason = "\(idea.map { $0.reason.isEmpty ? "" : $0.reason + " " } ?? "")A rhythm is a prompt, not a rule; nothing is late."
+            let reason = "There is no particular opportunity to suggest today."
             return result(.later, idea?.prompt ?? "Room until your next check-in", reason, false, next, idea)
         }
         if intention == .unsure {
-            if passedOnAction(.reflect) { return later(nextDue(calendar: calendar), "Room to decide in your own time", "You've already chosen to keep this open. Nothing needs deciding today.") }
-            return result(.reflect, "Decide what feels right", "You're unsure what you want for this relationship. Choose a direction, or keep it open without rushing to reach out.", true)
+            return result(.reflect, "No particular idea right now", "You can keep this relationship open without choosing a direction.", false)
         }
-        let starts = recentInitiations()
-        if starts.count == 3 && starts.allSatisfy({ $0.initiator == .them }), !passedOnAction(.takeInitiative) {
-            return result(.takeInitiative, "Take the initiative", "They started the last three recorded contacts. Your \(rhythmDays)-day check-in is ready; you could start this one.", true)
+        if passedOnAction(.hello) || passedOnAction(.timeTogether) {
+            return result(.later, "No particular idea right now", "You've set the simple hello aside. Your people are still here whenever you want them.", false)
         }
-        if intention == .grow, !passedOnAction(.timeTogether) {
-            return result(.timeTogether, "Make time together", "You want to grow this relationship. Suggest a call, coffee, game or time together that fits \(contexts.isEmpty ? "how you connect" : contexts.joined(separator: ", ")).", true)
-        }
-        if passedOnAction(.hello) {
-            return later(nextDue(calendar: calendar), "Nothing needed here", "You asked not to be nudged about this. There's nothing to catch up on.")
-        }
-        return result(.hello, "Send a small hello", "You want to maintain this relationship. Your chosen \(rhythmDays)-day rhythm is ready for a little connection.", true)
+        // A fallback lives on the person's page, never as an invented personalised opportunity.
+        return result(.hello, "Say hello, if you feel like it", "There isn't a specific idea recorded for this person yet.", false)
     }
-    private func later(_ date: Date, _ title: String, _ reason: String) -> RelationshipSuggestion {
-        .init(action: .later, title: title, reason: reason, ready: false, nextDate: date)
+    /// Broad category tags and an arbitrary agent sentence do not establish shared history.
+    private func isWorthOffering(_ idea: ConnectionIdea) -> Bool {
+        let generic = ["make time together", "spend time together", "catch up", "a catch up", "send a hello", "send a small hello", "connect", "reconnect"]
+        guard !generic.contains(AgentImportBatch.fingerprint(idea.activity)) else { return false }
+        // Preserve imported text for review, but never automatically offer pressure or intimacy.
+        guard isSafeConnectionText([idea.activity, idea.reminder, idea.reason].joined(separator: " ")) else { return false }
+        if idea.confidence == .known { return true }
+        let words = connection.interestKeywords
+        let text = idea.activity.lowercased()
+        return !idea.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || words.contains { text.contains($0) }
+    }
+    private func isSafeConnectionText(_ text: String) -> Bool {
+        let wording = text.lowercased()
+        let pressure = ["hug them", "give them a hug", "ask for a hug", "kiss them", "cuddle", "physical affection", "romantic intimacy", "sexual intimacy", "convince them", "keep messaging", "keep calling", "show up uninvited"]
+        return !pressure.contains(where: wording.contains)
     }
     private func action(for idea: ConnectionOpportunity) -> RelationshipSuggestion.Action {
         if idea.isRitual { return .timeTogether }
@@ -909,34 +1019,11 @@ public struct Person: Identifiable, Codable, Equatable, Sendable {
     }
     /// Turn a grounded idea into suggestion copy. Only states what the app actually knows.
     private func grounded(_ idea: ConnectionOpportunity, _ action: RelationshipSuggestion.Action, now: Date, calendar: Calendar) -> RelationshipSuggestion {
-        var sentences: [String] = []
-        if !idea.reason.isEmpty { sentences.append(idea.reason.hasSuffix(".") ? idea.reason : idea.reason + ".") }
-        else if idea.grounded { sentences.append("It connects with what you've recorded about \(name).") }
-        if let timing = idea.timing, timingMatches(timing, at: now, calendar: calendar) {
-            sentences.append(timing == .weekend ? "This can suit a weekend." : "This can suit \(timing.title.lowercased()).")
-        }
-        sentences.append(idea.provenance + ".")
-        return .init(action: action, title: idea.prompt, reason: sentences.joined(separator: " "), ready: true, nextDate: nil, opportunity: idea)
+        // Unknown memories remain labelled as ideas; do not turn an agent's rationale into fact.
+        let reason = idea.confidence == .known ? idea.reason : "An idea to consider, if it fits."
+        return .init(action: action, title: idea.prompt, reason: reason, ready: true, nextDate: nil, opportunity: idea)
     }
-    /// Outreach since the last time they reached out or you caught up, counted as one run.
-    private func unansweredOutreach() -> Int {
-        var count = 0
-        for entry in contacts.sorted(by: { $0.date < $1.date }) {
-            switch entry.kind {
-            case .outreach where entry.tracksResponse: count += 1
-            case .incoming, .reply, .conversation: count = 0
-            default: break
-            }
-        }
-        return count
-    }
-    private func recentInitiations() -> [ContactEntry] {
-        Array(contacts.filter { entry in
-            guard [.incoming, .outreach, .conversation].contains(entry.kind), [.me, .them].contains(entry.initiator) else { return false }
-            // An incoming message plus its catch-up is one initiation, not two.
-            return !(entry.kind == .conversation && entry.initiator == .them && contacts.contains { $0.kind == .incoming && $0.resolvedAt == entry.date })
-        }.sorted { $0.date > $1.date }.prefix(3))
-    }
+
 }
 
 public extension Array where Element == Person {
@@ -945,7 +1032,9 @@ public extension Array where Element == Person {
         filter { $0.isDue(at: now, calendar: calendar) }.sorted {
             let left = $0.suggestion(at: now, calendar: calendar), right = $1.suggestion(at: now, calendar: calendar)
             if (left.action == .reply) != (right.action == .reply) { return left.action == .reply }
-            return $0.nextDue(calendar: calendar) < $1.nextDue(calendar: calendar)
+            if $0.lastActioned != $1.lastActioned { return ($0.lastActioned ?? .distantPast) < ($1.lastActioned ?? .distantPast) }
+            if $0.nextDue(calendar: calendar) != $1.nextDue(calendar: calendar) { return $0.nextDue(calendar: calendar) < $1.nextDue(calendar: calendar) }
+            return $0.name.localizedStandardCompare($1.name) == .orderedAscending
         }
     }
     /// Everyone who has a recorded way of connecting, ready or not. Used for quiet suggestions.

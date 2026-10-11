@@ -19,6 +19,7 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
     var people: [Person] = []
     var error: String?
     var reminderEnabled = false
+    var reminderRequested = false
     var reminderBusy = false
     var reminderHour = 18
     var reminderMinute = 0
@@ -28,36 +29,34 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
     private var previewPolicy: ReminderPreviewPolicy = .unknown
     private var lastPrivacyCheck = Date.distantPast
     private var lastAttemptedNames: [String] = []
-    private let repository = RelationshipRepository()
+    let repository = RelationshipRepository()
     private var attemptedReminderRevision: UUID?
+    private var attemptedReminderDate: Date?
     private var lastReadError: String?
     private let center = UNUserNotificationCenter.current()
     private let notificationPresenter = NotificationPresenter()
 
     init() {
         center.delegate = notificationPresenter
-        center.setNotificationCategories([UNNotificationCategory(identifier: "relationship-check-in", actions: [], intentIdentifiers: [], hiddenPreviewsBodyPlaceholder: PrivateReminderText.hiddenBody, options: [])])
+        center.setNotificationCategories([UNNotificationCategory(identifier: "relationship-check-in", actions: [], intentIdentifiers: [], hiddenPreviewsBodyPlaceholder: PrivateReminderText.hiddenBody, options: []), UNNotificationCategory(identifier: "birthday-occasion", actions: [], intentIdentifiers: [], hiddenPreviewsBodyPlaceholder: BirthdayReminderText.hiddenBody, options: [])])
         #if DEBUG
         if CommandLine.arguments.contains("--demo") { seedDocumentationDemo() }
         #endif
         reload()
+        do {
+            let preferences = try repository.preferences()
+            reminderRequested = preferences.enabled; reminderHour = preferences.hour; reminderMinute = preferences.minute
+            includeNamesInReminders = preferences.includeNames
+        } catch { includeNamesInReminders = false; self.error = "Couldn't read reminder preferences: " + error.localizedDescription }
     }
     var due: [Person] { people.suggestedPeople() }
-    /// Recurring patterns worth keeping, across everyone.
-    var rituals: [ConnectionRitual] { people.flatMap(\.rituals).filter { !$0.dismissed } }
-    /// People who are not asking for anything, but whose recorded context is worth surfacing.
-    /// Ordered by the longest gap: a gentle idea for reconnection, never a nudge or a debt.
-    var quietSuggestions: [Person] {
-        people
-            .filter { person in
-                // Rituals get their own "patterns worth keeping" list, so they are not repeated here.
-                guard !person.paused, person.intention != .space, !person.isDue() else { return false }
-                guard let opportunity = person.bestOpportunity() else { return false }
-                return !opportunity.isRitual
-            }
-            .sorted { ($0.lastContact ?? $0.createdAt) < ($1.lastContact ?? $1.createdAt) }
-            .prefix(3)
-            .map { $0 }
+    var upcomingBirthdays: [(person: Person, date: Date)] {
+        let end = Calendar.current.date(byAdding: .day, value: 14, to: Calendar.current.startOfDay(for: .now))!
+        return people.filter { !$0.paused && $0.intention != .space }.compactMap { person in
+            guard let birthday = person.birthday else { return nil }
+            let date = birthday.nextDate()
+            return date <= end ? (person, date) : nil
+        }.sorted { $0.date == $1.date ? $0.person.name.localizedStandardCompare($1.person.name) == .orderedAscending : $0.date < $1.date }
     }
     func reload() {
         do { people = try repository.people(); lastReadError = nil }
@@ -72,10 +71,11 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
             reload()
             do {
                 let preferences = try repository.preferences()
+                reminderRequested = preferences.enabled
                 reminderHour = preferences.hour; reminderMinute = preferences.minute
                 includeNamesInReminders = preferences.includeNames
                 if Date.now.timeIntervalSince(lastPrivacyCheck) >= 30 { await refreshNotificationPrivacy() }
-                if preferences.revision != attemptedReminderRevision || preferences.enabled && lastAttemptedNames != reminderNames(preferences) {
+                if preferences.revision != attemptedReminderRevision || preferences.enabled && (lastAttemptedNames != reminderNames(preferences) || attemptedReminderDate != nextReminderDate(preferences)) {
                     await applyReminder(preferences)
                 }
             } catch { reminderMessage = "Couldn't read reminder settings: \(error.localizedDescription)" }
@@ -96,11 +96,11 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
             reload(); return true
         } catch { self.error = "Couldn't save changes: \(error.localizedDescription)"; return false }
     }
-    @discardableResult func update(_ id: UUID, change: (inout Person) -> Void) -> Bool {
+    @discardableResult func update(_ id: UUID, change: (inout Person) throws -> Void) -> Bool {
         do {
             try repository.modifyPeople { people in
                 guard let i = people.firstIndex(where: { $0.id == id }) else { throw RepositoryError.missing }
-                change(&people[i])
+                try change(&people[i])
             }
             reload(); return true
         } catch { self.error = error.localizedDescription; return false }
@@ -114,6 +114,18 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
             }
             reload(); return true
         } catch { self.error = error.localizedDescription; return false }
+    }
+    @discardableResult func importContacts(_ choices: [ContactImportChoice], deviceID: String, expected: [Person]) -> Bool {
+        do { try repository.importContacts(choices, deviceID: deviceID, expected: expected); reload(); return true }
+        catch { self.error = error.localizedDescription; return false }
+    }
+    @discardableResult func merge(_ plan: PeopleMerge) -> Bool {
+        do { try repository.merge(plan); reload(); return true }
+        catch { self.error = error.localizedDescription; return false }
+    }
+    @discardableResult func undoMerge(_ plan: PeopleMerge) -> Bool {
+        do { try repository.undoMerge(plan); reload(); return true }
+        catch { self.error = error.localizedDescription; return false }
     }
     func hasImported(_ provider: ImportProvider) -> Bool {
         people.contains { $0.importSources.contains(provider.title) } || ((try? repository.agentUpdateContext(provider).hasImported) ?? false)
@@ -138,9 +150,19 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
         } catch { self.error = error.localizedDescription }
     }
     private func applyReminder(_ preferences: ReminderPreferences, requestPermission: Bool = false) async {
+        #if DEBUG
+        if CommandLine.arguments.contains("--demo") {
+            reminderRequested = preferences.enabled; reminderEnabled = false
+            attemptedReminderRevision = preferences.revision
+            reminderMessage = "Notifications aren't scheduled in this fictional preview."
+            return
+        }
+        #endif
         guard !reminderBusy else { return }
         reminderBusy = true
         defer { reminderBusy = false }
+        reminderRequested = preferences.enabled
+        attemptedReminderDate = nextReminderDate(preferences)
         attemptedReminderRevision = preferences.revision
         lastAttemptedNames = reminderNames(preferences)
         if !preferences.enabled {
@@ -166,17 +188,25 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
             }
             updatePrivacyMessage(settings)
             let names = reminderNames(preferences)
+            guard !names.isEmpty else {
+                center.removePendingNotificationRequests(withIdentifiers: ["daily-check-in"])
+                center.removeDeliveredNotifications(withIdentifiers: ["daily-check-in"])
+                reminderEnabled = false
+                report("idle", "Reminders are enabled. Nothing to suggest for the next reminder.")
+                return
+            }
             let text = PrivateReminderText.make(names: names, includeNames: preferences.includeNames, policy: previewPolicy)
             let content = UNMutableNotificationContent()
             content.title = PrivateReminderText.title
             content.body = text.body
             content.categoryIdentifier = "relationship-check-in"
             content.sound = .default
-            let trigger = UNCalendarNotificationTrigger(dateMatching: DateComponents(hour: preferences.hour, minute: preferences.minute), repeats: true)
+            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: nextReminderDate(preferences))
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             try await center.add(UNNotificationRequest(identifier: "daily-check-in", content: content, trigger: trigger))
             center.removeDeliveredNotifications(withIdentifiers: ["daily-check-in"])
             reminderEnabled = await center.pendingNotificationRequests().contains { $0.identifier == "daily-check-in" }
-            report(reminderEnabled ? "scheduled" : "failed", reminderEnabled ? String(format: "Daily reminder scheduled for %02d:%02d local time.", preferences.hour, preferences.minute) : "The system didn't retain the reminder request.")
+            report(reminderEnabled ? "scheduled" : "failed", reminderEnabled ? String(format: "Next opportunity reminder scheduled for %02d:%02d local time. Open the app to refresh future reminders.", preferences.hour, preferences.minute) : "The system didn't retain the reminder request.")
         } catch {
             reminderEnabled = false
             let nsError = error as NSError
@@ -189,8 +219,10 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
         }
     }
     private func reminderNames(_ preferences: ReminderPreferences) -> [String] {
-        let date = Calendar.current.nextDate(after: .now, matching: DateComponents(hour: preferences.hour, minute: preferences.minute), matchingPolicy: .nextTime) ?? .now
-        return Array(people.suggestedPeople(at: date).prefix(3)).map(\.name)
+        return Array(people.suggestedPeople(at: nextReminderDate(preferences)).prefix(3)).map(\.name)
+    }
+    private func nextReminderDate(_ preferences: ReminderPreferences) -> Date {
+        Calendar.current.nextDate(after: .now, matching: DateComponents(hour: preferences.hour, minute: preferences.minute), matchingPolicy: .nextTime) ?? .now
     }
     private func updatePrivacyMessage(_ settings: UNNotificationSettings) {
         lastPrivacyCheck = .now
@@ -243,6 +275,7 @@ extension RelationshipStore {
     /// Fictional data for documentation previews: shows grounded ideas rather than
     /// day counting. Seeded once; a second launch leaves the demo store untouched.
     private func seedDocumentationDemo() {
+        if CommandLine.arguments.contains("--demo-empty") { return }
         let daysAgo: (Int) -> Date = { Date.now.addingTimeInterval(Double(-$0) * 86400) }
         var alex = Person(name: "Alex Chen", context: "Met through the climbing club. Ask how the new route went.")
         alex.chooseIntention(.grow); alex.contexts = ["Hobby", "Nearby"]
@@ -265,6 +298,23 @@ extension RelationshipStore {
             try repository.modifyPeople { people in
                 guard people.isEmpty else { return }
                 people = [alex, sam, jordan]
+                if CommandLine.arguments.contains("--ux-preview") {
+                    var game = Person(name: "Noah Bennett")
+                    game.addInterest("Stardew Valley")
+                    game.addIdea(activity: "another evening of Stardew Valley", reminder: "Stardew Valley one evening?", reason: "You enjoyed playing together.")
+                    var longName = Person(name: "Alexandra Francesca Montgomery-Wellington", context: "Working together on the community garden website")
+                    longName.relationshipTypes = ["Friend", "Colleague", "Neighbour"]; longName.contexts = ["Work", "Nearby", "Hobby"]
+                    longName.addIdea(activity: "a website work session over lunch", reason: "You're working on the garden's website together.")
+                    people.insert(contentsOf: [game, longName], at: 0)
+                }
+                if CommandLine.arguments.contains("--demo-large") {
+                    for index in 1...120 {
+                        var person = Person(name: "Example person \(String(format: "%03d", index))", context: "A friend from the community garden")
+                        person.relationshipTypes = ["Friend", "Colleague"]; person.contexts = ["Work", "Nearby"]
+                        person.chooseIntention(index % 3 == 0 ? .grow : .maintain)
+                        people.append(person)
+                    }
+                }
             }
         } catch { self.error = error.localizedDescription }
     }

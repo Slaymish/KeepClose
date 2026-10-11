@@ -3,11 +3,13 @@ import SwiftUI
 @main struct KeepCloseApp: App {
     @State private var store = RelationshipStore()
     @State private var appLock = AppLockController()
+    @State private var contacts = ContactsController()
+    @State private var birthdays = BirthdayReminders()
     #if os(macOS)
     private let updater = AppUpdater()
     #endif
     var body: some Scene {
-        WindowGroup { ProtectedAppView().environment(store).environment(appLock).modifier(KeepCloseSyncLifecycle()) }
+        WindowGroup { ProtectedAppView().environment(store).environment(appLock).environment(contacts).environment(birthdays).modifier(KeepCloseSyncLifecycle()) }
         #if os(macOS)
         .commands {
             CommandGroup(after: .appInfo) { CheckForUpdatesView(updater: updater) }
@@ -16,159 +18,82 @@ import SwiftUI
     }
 }
 
+enum AppPage: String, CaseIterable, Identifiable {
+    case today = "Today", people = "People", preferences = "Preferences"
+    var id: String { rawValue }
+    var icon: String { switch self { case .today: "sun.max"; case .people: "person.2"; case .preferences: "slider.horizontal.3" } }
+}
+
 struct AppView: View {
     @Environment(RelationshipStore.self) private var store
     @Environment(AppLockController.self) private var appLock
-    @State private var page: String? = "Today"
-    @State private var editing: Person?
+    @Environment(ContactsController.self) private var contacts
+    @Environment(BirthdayReminders.self) private var birthdays
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var appearance
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var page: AppPage? = .today
+    @State private var showingContacts = false
     @State private var showingAdd = false
-    @State private var categoryFilter: String?
     @State private var importProvider: ImportProvider?
     var body: some View {
-        @Bindable var store = store
-        NavigationSplitView {
-            List(selection: $page) {
-                Label("Today", systemImage: "sun.max").tag("Today")
-                Label("People", systemImage: "person.2").tag("People")
-                Label("Preferences", systemImage: "slider.horizontal.3").tag("Preferences")
-            }
-            .navigationTitle("Keep Close")
-            .navigationSplitViewColumnWidth(min: 180, ideal: 210)
-        } detail: {
-            NavigationStack {
-                Group {
-                    if page == "Preferences" { preferences }
-                    else if store.people.isEmpty { emptyState }
-                    else if page == "People" { peopleList }
-                    else { today }
-                }
-                .navigationTitle(page ?? "Today")
-                .toolbar {
-                    ToolbarItem(placement: .primaryAction) { importMenu }
-                    ToolbarItem(placement: .primaryAction) { Button("Add person", systemImage: "plus") { showingAdd = true } }
-                }
-            }
-        }
-        .tint(.teal)
-        .sheet(isPresented: $showingAdd) { PersonEditor(person: Person(name: "")) }
-        .sheet(item: $editing) { PersonEditor(person: $0) }
-        .sheet(item: $importProvider) { AgentImportView(provider: $0) }
-        .alert("Something needs attention", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
-            Button("OK") { store.error = nil }
-        } message: { Text(store.error ?? "") }
-        #if os(macOS)
-        .frame(minWidth: 760, minHeight: 560)
-        #endif
-    }
-    private var importMenu: some View {
-        Menu {
-            ForEach(ImportProvider.allCases) { provider in
-                Button("\(store.hasImported(provider) ? "Update" : "Import") from \(provider.title)…") { importProvider = provider }
-            }
-        } label: {
+        Group {
             #if os(macOS)
-            HStack(spacing: 6) { Image(systemName: "square.and.arrow.down"); Text(store.hasImported(.chatgpt) ? "Update from ChatGPT" : "Import from ChatGPT") }
+            NavigationSplitView {
+                List(AppPage.allCases, selection: $page) { item in
+                    Label(item.rawValue, systemImage: item.icon).tag(item)
+                }
+                .navigationTitle("Keep Close")
+                .navigationSplitViewColumnWidth(min: 160, ideal: 190)
+            } detail: { screen(page ?? .today) }
+            .frame(minWidth: 680, minHeight: 540)
             #else
-            Label(store.hasImported(.chatgpt) ? "Update from ChatGPT" : "Import from ChatGPT", systemImage: "square.and.arrow.down")
+            TabView {
+                ForEach(AppPage.allCases) { item in
+                    screen(item).tabItem { Label(item.rawValue, systemImage: item.icon) }
+                }
+            }
             #endif
         }
+        #if DEBUG
+        .preferredColorScheme(CommandLine.arguments.contains("--demo-dark") ? .dark : CommandLine.arguments.contains("--demo-light") ? .light : nil)
+        .dynamicTypeSize(CommandLine.arguments.contains("--demo-large-type") ? .accessibility3 : typeSize)
+        #endif
+        .tint(appearance == .dark ? Color(red: 0.86, green: 0.69, blue: 0.47) : Color(red: 0.43, green: 0.30, blue: 0.18))
+        .sheet(isPresented: $showingAdd) { PersonEditor(person: Person(name: "")) }
+        .sheet(item: $importProvider) { AgentImportView(provider: $0) }
+        .sheet(isPresented: $showingContacts) { ContactsImportView() }
+        .task { await contacts.followChanges(); store.reload() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await contacts.followChanges(); store.reload(); await birthdays.refresh(people: store.people, names: store.includeNamesInReminders) } } }
+        .onReceive(NotificationCenter.default.publisher(for: ContactsController.changedNotification)) { _ in Task { await contacts.followChanges(); store.reload() } }
+        .alert("Couldn't save that change", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
+            Button("OK") { store.error = nil }
+        } message: { Text(store.error ?? "") }
     }
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Make room for your people", systemImage: "person.2.circle")
-        } description: {
-            Text("Start with one person. Choose who they are to you and what you'd like for the relationship, and add a few things you enjoy doing together. You can change your mind any time.")
-        } actions: {
-            Button("Import from ChatGPT") { importProvider = .chatgpt }.buttonStyle(.borderedProminent)
-            Button("Add a person yourself") { showingAdd = true }.buttonStyle(.bordered)
-        }
-    }
-    private var today: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                if store.due.isEmpty { quietToday } else { opportunities }
-                ideasWorthRemembering
-                Text("Suggestions come from what you record here: notes, shared interests, things you've enjoyed together. Nothing is sent anywhere unless you copy an import prompt yourself.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }.padding(28).frame(maxWidth: 820, alignment: .leading).frame(maxWidth: .infinity)
-        }
-    }
-    private var opportunities: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("A moment with someone").font(.largeTitle.bold())
-                Text(store.due.count == 1 ? "One way in, if you feel like it." : "A few ways in. Pick one, or none.").foregroundStyle(.secondary)
-            }
-            ForEach(Array(store.due.prefix(3))) { person in
-                PersonCard(person: person, edit: { editing = person })
-            }
-            if store.due.count > 3 {
-                Text("\(store.due.count - 3) more people have something ready when you want it. They'll keep.")
-                    .font(.callout).foregroundStyle(.secondary)
-            }
-        }
-    }
-    private var quietToday: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Nothing needs doing today").font(.largeTitle.bold())
-            Text("That's the good outcome, not a gap to fill. If you'd like company anyway, these are open.")
-                .foregroundStyle(.secondary)
-            ForEach(store.quietSuggestions) { person in
-                QuietSuggestionRow(person: person) { editing = person }
-            }
-            if store.quietSuggestions.isEmpty {
-                Text("Add something you enjoy doing with someone and Keep Close will surface it as an idea rather than a reminder.")
-                    .font(.callout).foregroundStyle(.secondary)
-                Button("See your people") { page = "People" }.buttonStyle(.bordered)
-            }
-        }
-    }
-    /// Rituals and ideas that exist even when nobody is "due". Optional, never urgent.
-    @ViewBuilder private var ideasWorthRemembering: some View {
-        if !store.rituals.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Patterns worth keeping").font(.headline)
-                ForEach(store.rituals.prefix(4)) { ritual in
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Image(systemName: "repeat").foregroundStyle(.teal)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(ritual.title)
-                            if !ritual.note.isEmpty { Text(ritual.note).font(.caption).foregroundStyle(.secondary) }
-                            Text(ritual.days == nil ? "No set frequency" : "Roughly every \(ritual.days!) days").font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Text(ritual.who).font(.caption).foregroundStyle(.secondary)
-                    }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(.teal.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+    private func screen(_ page: AppPage) -> some View {
+        NavigationStack {
+            Group {
+                switch page {
+                case .today: TodayView(add: { showingAdd = true }, importPeople: { importProvider = .chatgpt })
+                case .people: PeopleView(add: { showingAdd = true })
+                case .preferences: preferences
                 }
             }
-        }
-    }
-    private var peopleList: some View {
-        VStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    Button("Everyone") { categoryFilter = nil }.buttonStyle(.bordered).tint(categoryFilter == nil ? .teal : .gray)
-                    ForEach(Array(Set(store.people.flatMap { $0.relationshipTypes + $0.contexts })).sorted(), id: \.self) { tag in
-                        Button(tag) { categoryFilter = categoryFilter == tag ? nil : tag }.buttonStyle(.bordered).tint(categoryFilter == tag ? .teal : .gray)
+            .navigationTitle(page.rawValue)
+            .navigationDestination(for: UUID.self) { PersonDetail(personId: $0) }
+            .toolbar {
+                if page != .preferences {
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            Button("Import from Contacts…") { showingContacts = true }
+                            Divider()
+                            ForEach(ImportProvider.allCases) { provider in
+                                Button("\(store.hasImported(provider) ? "Update" : "Import") from \(provider.title)…") { importProvider = provider }
+                            }
+                        } label: { Label("Import or update people", systemImage: "square.and.arrow.down") }
                     }
-                }.padding()
-            }
-            List {
-                ForEach(IntentionGroup.order, id: \.self) { intention in
-                    let people = store.people.filter { $0.intention == intention && (categoryFilter == nil || ($0.relationshipTypes + $0.contexts).contains(categoryFilter!)) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-                    if !people.isEmpty {
-                        Section {
-                            ForEach(people) { person in
-                                NavigationLink {
-                                    ScrollView { PersonCard(person: person, edit: { editing = person }, showsHistory: true).padding(24) }
-                                } label: { PersonRow(person: person) }
-                            }
-                        } header: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(intention.title)
-                                Text(IntentionGroup.blurb(intention)).font(.caption).foregroundStyle(.secondary).textCase(nil)
-                            }
-                        }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Add person", systemImage: "plus") { showingAdd = true }
                     }
                 }
             }
@@ -176,6 +101,14 @@ struct AppView: View {
     }
     private var preferences: some View {
         Form {
+            BirthdayPreferences()
+            Section("Contacts") {
+                Button("Choose people from Contacts…") { showingContacts = true }
+                Button("Refresh linked contacts") { Task { await contacts.followChanges(); store.reload() } }.disabled(contacts.busy)
+                Button("Open Contacts privacy settings") { contacts.openSettings() }
+                Text("Import all available contacts or select just a few. Links follow changes without replacing your own edits. Contacts access is optional and managed separately on each device.").font(.caption).foregroundStyle(.secondary)
+                if let message = contacts.message { Text(message).font(.caption).foregroundStyle(.secondary) }
+            }
             Section("App lock") {
                 Toggle("Require authentication to open Keep Close", isOn: Binding(get: { appLock.enabled }, set: { enabled in Task { await appLock.authenticate(enabled ? .enable : .disable) } }))
                     .disabled(appLock.authenticating)
@@ -192,18 +125,18 @@ struct AppView: View {
                 Text("Choose Show Previews → When Unlocked for Keep Close. Keep that setting selected for named reminders already scheduled by the OS. Turn off names here to keep all reminders generic.").font(.caption).foregroundStyle(.secondary)
             }
             Section("A gentle nudge") {
-                Toggle("Daily reminder", isOn: Binding(get: { store.reminderEnabled }, set: { value in Task { await store.setReminder(value) } }))
+                Toggle("Daily reminder", isOn: Binding(get: { store.reminderRequested }, set: { value in Task { await store.setReminder(value) } }))
                 .disabled(store.reminderBusy)
                 DatePicker("Reminder time", selection: Binding(get: {
                     Calendar.current.date(from: DateComponents(year: 2001, month: 1, day: 1, hour: store.reminderHour, minute: store.reminderMinute)) ?? .now
                 }, set: { date in
                     let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
                     store.reminderHour = parts.hour ?? 18; store.reminderMinute = parts.minute ?? 0
-                    Task { await store.setReminder(store.reminderEnabled) }
+                    Task { await store.setReminder(store.reminderRequested) }
                 }), displayedComponents: .hourAndMinute)
                 .disabled(store.reminderBusy)
                 if !store.reminderMessage.isEmpty { Text(store.reminderMessage).font(.caption).foregroundStyle(.secondary) }
-                Text("One quiet reminder a day at most, inviting you to open Keep Close if it suits. It never counts up, never escalates, and skipping it means nothing.").font(.footnote).foregroundStyle(.secondary)
+                Text("Only when there is an opportunity worth suggesting. Open Keep Close to refresh the next reminder; nothing repeats while the app is closed.").font(.footnote).foregroundStyle(.secondary)
             }
             Section("Device sync") {
                 NavigationLink("Sync with your other device") { KeepCloseSyncSettings() }
@@ -217,214 +150,506 @@ struct AppView: View {
     }
 }
 
-enum IntentionGroup {
-    static let order: [RelationshipIntention] = [.grow, .maintain, .unsure, .space]
-    static func blurb(_ intention: RelationshipIntention) -> String {
-        switch intention {
-        case .grow: "You'd like to invest more here."
-        case .maintain: "Let this stay part of your life."
-        case .unsure: "Still deciding what fits."
-        case .space: "No nudges to reach out. Their messages can still reach you."
+
+/// A small receipt survives the card disappearing. Undo removes only this event.
+struct ConnectionReceipt {
+    let personId: UUID
+    let entryId: UUID
+    let text: String
+}
+struct ReceiptView: View {
+    @Environment(RelationshipStore.self) private var store
+    @Binding var receipt: ConnectionReceipt?
+    var body: some View {
+        if let item = receipt {
+            ViewThatFits(in: .horizontal) {
+                HStack { Text(item.text); Spacer(); controls(item) }
+                VStack(alignment: .leading, spacing: 10) { Text(item.text); controls(item) }
+            }
+            .font(.callout).padding(16)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 14))
+            .accessibilityElement(children: .contain)
         }
+    }
+    private func controls(_ item: ConnectionReceipt) -> some View {
+        HStack {
+            Button("Undo") {
+                if store.update(item.personId, change: { person in
+                    guard person.removeContact(item.entryId) else { throw RepositoryError.missing }
+                }) { receipt = nil }
+            }.buttonStyle(.borderless)
+            Button("Dismiss", systemImage: "xmark") { receipt = nil }.labelStyle(.iconOnly).buttonStyle(.borderless)
+        }
+    }
+}
+
+struct TodayView: View {
+    @Environment(RelationshipStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let add: () -> Void
+    let importPeople: () -> Void
+    @State private var receipt: ConnectionReceipt?
+    private var upcoming: [(person: Person, plan: ConnectionPlan)] {
+        store.people.filter { !$0.paused && $0.intention != .space }
+            .flatMap { person in person.activePlans.filter { $0.date >= Calendar.current.startOfDay(for: .now) }.map { (person: person, plan: $0) } }
+            .sorted { $0.plan.date < $1.plan.date }
+    }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                ReceiptView(receipt: $receipt)
+                if store.people.isEmpty {
+                    QuietState(icon: "person.2", title: "A little closer", text: "Start with someone you'd like to share more of life with. One person is enough.")
+                    ViewThatFits {
+                        HStack { welcomeActions }
+                        VStack(alignment: .leading, spacing: 12) { welcomeActions }
+                    }
+                } else if store.due.isEmpty {
+                    if store.upcomingBirthdays.isEmpty {
+                        QuietState(icon: "sun.max", title: "Room for your day", text: "No particular opportunities to suggest today. Enjoy whatever the day brings.")
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("A little thought").font(.system(.largeTitle, design: .serif, weight: .semibold))
+                            Text("An occasion to remember, in your own way.").foregroundStyle(.secondary)
+                        }
+                    }
+                    NavigationLink("Browse your people") { PeopleView(add: add).navigationTitle("People") }.buttonStyle(.bordered)
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("A little time together").font(.system(.largeTitle, design: .serif, weight: .semibold))
+                        Text("Something that might fit your day. Take it or leave it.").foregroundStyle(.secondary)
+                    }
+                    ForEach(Array(store.due.prefix(3))) { person in
+                        OpportunityCard(person: person, showsPerson: true) { receipt = $0 }
+                    }
+                }
+                UpcomingBirthdays()
+                if !upcoming.isEmpty {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Coming up").font(.title3.weight(.semibold))
+                        ForEach(Array(upcoming.prefix(3)), id: \.plan.id) { item in
+                            NavigationLink(value: item.person.id) {
+                                HStack(alignment: .top, spacing: 14) {
+                                    Image(systemName: "calendar").foregroundStyle(.secondary).accessibilityHidden(true)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(item.person.name).font(.headline)
+                                        Text(item.plan.title)
+                                        Text(item.plan.date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer(minLength: 0)
+                                }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity, alignment: .center)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: store.due.map(\.id))
+        }
+    }
+    private var welcomeActions: some View {
+        Group {
+            Button("Add someone", action: add).buttonStyle(.borderedProminent)
+            Button("Bring in remembered context", action: importPeople).buttonStyle(.bordered)
+        }
+    }
+}
+
+struct QuietState: View {
+    let icon: String
+    let title: String
+    let text: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: icon).font(.system(size: 32, weight: .light)).foregroundStyle(.secondary).accessibilityHidden(true)
+            Text(title).font(.system(.largeTitle, design: .serif, weight: .semibold))
+            Text(text).font(.body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }.padding(.vertical, 28)
+    }
+}
+
+struct PeopleView: View {
+    @Environment(RelationshipStore.self) private var store
+    let add: () -> Void
+    @State private var search = ""
+    @State private var category: String?
+    @State private var intention: RelationshipIntention?
+    private var categories: [String] { Array(Set(store.people.flatMap { $0.relationshipTypes + $0.contexts })).sorted() }
+    private var filtered: [Person] {
+        store.people.filter { person in
+            (intention == nil || person.intention == intention) &&
+            (category == nil || (person.relationshipTypes + person.contexts).contains(category!)) &&
+            (search.isEmpty || ([person.name, person.context] + person.relationshipTypes + person.contexts + person.interests.map(\.name)).contains { $0.localizedStandardContains(search) })
+        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+    var body: some View {
+        VStack(spacing: 0) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { filters; Spacer(minLength: 0) }
+                VStack(alignment: .leading, spacing: 10) { filters }
+            }.padding(.horizontal, 20).padding(.vertical, 12)
+            if filtered.isEmpty {
+                ContentUnavailableView {
+                    Label(store.people.isEmpty ? "Your people, in one place" : "No matching people", systemImage: "person.2")
+                } description: {
+                    Text(store.people.isEmpty ? "Add someone you'd like to keep close." : "Try another name or change the filters.")
+                } actions: {
+                    if store.people.isEmpty { Button("Add someone", action: add) }
+                    else { Button("Clear search and filters") { search = ""; category = nil; intention = nil } }
+                }
+            } else {
+                List(filtered) { person in
+                    NavigationLink(value: person.id) { PersonRow(person: person) }
+                }.listStyle(.plain)
+            }
+        }
+        .searchable(text: $search, prompt: "Find a person or shared interest")
+    }
+    private var filters: some View {
+        Group {
+            Menu {
+                Button("All intentions") { intention = nil }
+                ForEach(RelationshipIntention.allCases, id: \.self) { choice in
+                    Button(choice.title) { intention = choice }
+                }
+            } label: { Label(intention?.title ?? "All intentions", systemImage: "line.3.horizontal.decrease") }
+            Menu {
+                Button("All categories") { category = nil }
+                ForEach(categories, id: \.self) { value in Button(value) { category = value } }
+            } label: { Text(category ?? "All categories") }
+            if intention != nil || category != nil {
+                Button("Clear") { intention = nil; category = nil }.buttonStyle(.borderless)
+            }
+        }.font(.callout)
     }
 }
 
 struct Avatar: View {
     let name: String
+    @ScaledMetric private var size = 44.0
     var body: some View {
         Text(name.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init).joined())
-            .font(.headline).foregroundStyle(.teal).frame(width: 44, height: 44)
-            .background(.teal.opacity(0.1), in: Circle()).accessibilityHidden(true)
+            .font(.callout.weight(.medium)).foregroundStyle(.primary)
+            .frame(width: min(size, 64), height: min(size, 64))
+            .background(.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+            .accessibilityHidden(true)
     }
 }
 
 struct PersonRow: View {
     let person: Person
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(alignment: .top, spacing: 14) {
             Avatar(name: person.name)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(person.name).font(.headline)
-                Text((person.relationshipTypes + person.contexts).joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            if !person.visibleIdeas.isEmpty {
-                Label("\(person.visibleIdeas.count)", systemImage: "sparkles").font(.caption).foregroundStyle(.teal)
-                    .accessibilityLabel("\(person.visibleIdeas.count) recorded ways to connect")
-            }
-            Text(person.paused ? "Paused" : person.suggestion().title).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
-        }.padding(.vertical, 6)
-    }
-}
-
-/// A light row used when nothing is pressing: an invitation, not an instruction.
-struct QuietSuggestionRow: View {
-    @Environment(RelationshipStore.self) private var store
-    let person: Person
-    let edit: () -> Void
-    private var current: Person { store.people.first { $0.id == person.id } ?? person }
-    var body: some View {
-        let person = current
-        let opportunity = person.bestOpportunity()
-        Button(action: edit) {
-            HStack(alignment: .top, spacing: 12) {
-                Avatar(name: person.name)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(person.name).font(.headline)
-                    Text(opportunity?.prompt ?? person.suggestion().title).font(.callout)
-                    if let reason = opportunity?.reason, !reason.isEmpty {
-                        Text(reason).font(.caption).foregroundStyle(.secondary)
-                    }
-                    if let opportunity { Text(opportunity.provenance).font(.caption2).foregroundStyle(.secondary) }
+            VStack(alignment: .leading, spacing: 5) {
+                Text(person.name).font(.headline).fixedSize(horizontal: false, vertical: true)
+                if let context = person.listContext {
+                    Text(context).font(.callout).foregroundStyle(.secondary).lineLimit(2)
                 }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
-            }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                .background(.background, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(.primary.opacity(0.1)))
-        }.buttonStyle(.plain)
+                let suggestion = person.suggestion()
+                if suggestion.ready {
+                    Label(suggestion.title, systemImage: suggestion.action == .reply ? "bubble.left" : "leaf")
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+                if person.paused || person.intention == .space {
+                    Text(person.paused ? "Suggestions paused" : "Giving space").font(.caption).foregroundStyle(.secondary)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
     }
 }
 
-struct PersonCard: View {
+extension Person {
+    var listContext: String? {
+        if let interest = interests.first(where: { $0.confidence == .known }) { return interest.name }
+        if let memory = memories.last(where: { $0.confidence == .known }) { return memory.text }
+        let note = context.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !note.isEmpty { return note }
+        return relationshipTypes.isEmpty ? nil : relationshipTypes.prefix(2).joined(separator: " · ")
+    }
+}
+
+struct OpportunityCard: View {
     @Environment(RelationshipStore.self) private var store
     @Environment(\.openURL) private var openURL
     let person: Person
-    let edit: () -> Void
-    var showsHistory = false
-    @State private var logKind: ContactKind?
+    var showsPerson = false
+    let acknowledged: (ConnectionReceipt) -> Void
     @State private var openFailed = false
-    @State private var editingContext = false
-    private var current: Person { store.people.first { $0.id == person.id } ?? person }
+    @State private var showingPlan = false
     var body: some View {
-        let person = current
         let suggestion = person.suggestion()
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Avatar(name: person.name)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(person.name).font(.title2.bold())
-                    Text(person.intention.title).font(.subheadline).foregroundStyle(.teal)
-                }
-                Spacer()
-                Button("Edit", action: edit).buttonStyle(.borderless)
+        VStack(alignment: .leading, spacing: 18) {
+            if showsPerson {
+                NavigationLink(value: person.id) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Avatar(name: person.name)
+                        Text(person.name).font(.title2.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
+                    }
+                }.buttonStyle(.plain).accessibilityHint("Open this person's details")
             }
-            if !(person.relationshipTypes + person.contexts).isEmpty {
-                Text((person.relationshipTypes + person.contexts).joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
-            }
-            contextHighlights(person)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(suggestion.title).font(.headline)
-                Text(suggestion.reason).font(.callout).foregroundStyle(.secondary)
-                if let opportunity = suggestion.opportunity, !opportunity.grounded {
-                    Text("Nothing else recorded about this yet. Edit the idea if it isn't right.")
-                        .font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                if let idea = suggestion.opportunity, idea.confidence != .known {
+                    Text(idea.confidence == .unsure ? "If this still fits" : "An idea to consider").font(.caption).foregroundStyle(.secondary)
                 }
-                if let date = suggestion.nextDate, !suggestion.ready {
-                    Text("Next gentle prompt: \(date.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(.secondary)
+                Text(suggestion.title).font(.title3.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                if !suggestion.reason.isEmpty, suggestion.opportunity?.confidence == .known || suggestion.opportunity == nil {
+                    Text(suggestion.reason).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-            }.padding().frame(maxWidth: .infinity, alignment: .leading).background(.teal.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
-            if !person.context.isEmpty { Text(person.context).font(.callout) }
-            if !person.contacts.isEmpty {
-                Text("Last connection: \(person.lastContact.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "nothing logged yet")\(person.lastIncoming.map { " · they last reached out \($0.formatted(date: .abbreviated, time: .omitted))" } ?? "")")
-                    .font(.caption).foregroundStyle(.secondary)
             }
             ViewThatFits(in: .horizontal) {
-                HStack { actions(person) }
-                VStack(alignment: .leading, spacing: 12) { actions(person) }
+                HStack(spacing: 12) { connectionActions(suggestion); Spacer(minLength: 0); choiceActions(suggestion) }
+                VStack(alignment: .leading, spacing: 14) { connectionActions(suggestion); choiceActions(suggestion) }
             }
-            if let opportunity = suggestion.opportunity, suggestion.ready {
-                feedbackRow(person, opportunity)
+            if let opportunity = suggestion.opportunity {
+                DisclosureGroup("About this idea") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if opportunity.confidence != .known, !opportunity.reason.isEmpty { Text(opportunity.reason).font(.callout) }
+                        Text(opportunity.provenance).font(.caption).foregroundStyle(.secondary)
+                        if let timing = opportunity.timing { Text(timing.title).font(.caption).foregroundStyle(.secondary) }
+                        Button(person.helpfulIdeas.contains(opportunity.id) ? "Saved as useful" : "This idea is useful") { store.update(person.id) { $0.recordFeedback(.helpful, ideaId: opportunity.ideaId) } }
+                            .buttonStyle(.borderless).font(.callout).disabled(person.helpfulIdeas.contains(opportunity.id))
+                        Button("I did this") { store.update(person.id) { $0.recordFeedback(.done, ideaId: opportunity.ideaId) } }
+                            .buttonStyle(.borderless).font(.callout)
+                        Text("Remember the activity without adding a contact log.").font(.caption).foregroundStyle(.secondary)
+                    }.padding(.top, 8)
+                }.font(.callout).foregroundStyle(.secondary)
             }
-            if !person.importSources.isEmpty {
-                Text("Imported from \(person.importSources.joined(separator: ", "))").font(.caption2).foregroundStyle(.secondary)
-            }
-            if showsHistory, !person.contacts.isEmpty { history(person) }
-            if !showsHistory, !person.contacts.isEmpty {
-                DisclosureGroup("Connection history (\(person.contacts.count))") { historyList(person) }.font(.callout)
-            }
-        }.padding(22).background(.background, in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(.primary.opacity(0.12)))
-            .sheet(item: $logKind) { kind in ContactLogger(person: current, initialKind: kind) }
-            .sheet(isPresented: $editingContext) { ConnectionContextView(person: current) }
-            .alert("Couldn't open the contact app", isPresented: $openFailed) { Button("OK", role: .cancel) {} } message: { Text("Check this person's contact details, or reach out using your usual app.") }
+        }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(.primary.opacity(0.12), lineWidth: 1))
+            .sheet(isPresented: $showingPlan) { PlanEditor(person: person, opportunity: suggestion.opportunity) }
+            .alert("Couldn't open the contact app", isPresented: $openFailed) { Button("OK", role: .cancel) {} } message: { Text("Use your usual app, or check this person's contact details.") }
     }
-    /// Names, interests and memories, so a suggestion has something human behind it.
-    @ViewBuilder private func contextHighlights(_ person: Person) -> some View {
-        if !person.interests.isEmpty || !person.memories.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                if !person.interests.isEmpty {
-                    Text(person.interests.prefix(4).map(\.name).joined(separator: " · ")).font(.callout)
+    private func connectionActions(_ suggestion: RelationshipSuggestion) -> some View {
+        Group {
+            if let url = person.contactURL {
+                Button(suggestion.action == .reply ? "Open to reply" : "Open \(person.method.rawValue)", systemImage: "arrow.up.forward.app") {
+                    openURL(url) { accepted in if !accepted { openFailed = true } }
+                }.buttonStyle(.bordered)
+            }
+            Menu(suggestion.action == .reply ? "I replied…" : "I reached out…") {
+                if suggestion.action == .reply {
+                    Button("Reply sent") { record(.reply, suggestion) }
+                } else {
+                    Button("Message or invitation sent") { record(.outreach, suggestion) }
                 }
-                ForEach(person.memories.suffix(2)) { memory in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Image(systemName: "bookmark").font(.caption).foregroundStyle(.teal)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(memory.text).font(.callout)
-                            Text(memory.provenance).font(.caption2).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                Button(person.connection.isEmpty ? "Add what you share" : "Ways to connect (\(person.visibleIdeas.count))") { editingContext = true }.buttonStyle(.borderless).font(.callout)
-            }
-        } else {
-            Button("Add something you share") { editingContext = true }.buttonStyle(.borderless).font(.callout)
-        }
-    }
-    @ViewBuilder private func feedbackRow(_ person: Person, _ opportunity: ConnectionOpportunity) -> some View {
-        HStack(spacing: 12) {
-            Button("Useful") { store.update(person.id) { $0.recordFeedback(.helpful, ideaId: opportunity.ideaId) } }.buttonStyle(.borderless).font(.caption)
-            Button("I did this") { store.update(person.id) { $0.recordFeedback(.done, ideaId: opportunity.ideaId) } }.buttonStyle(.borderless).font(.caption)
-            Button("Not for me") { store.update(person.id) { $0.dismissIdea(opportunity.ideaId); $0.recordFeedback(.notForMe, ideaId: opportunity.ideaId) } }.buttonStyle(.borderless).font(.caption)
-            Spacer()
-            Text("Only stored on this device").font(.caption2).foregroundStyle(.secondary)
-        }
-    }
-    @ViewBuilder private func actions(_ person: Person) -> some View {
-        if person.suggestion().action == .reflect { Button("Choose a direction", action: edit).buttonStyle(.borderedProminent) }
-        if person.method != .inPerson && !person.address.isEmpty {
-            Button(person.pendingIncoming.isEmpty ? "Open \(person.method.rawValue)" : "Open to reply", systemImage: "arrow.up.forward.app") { launch(person) }.buttonStyle(.borderedProminent)
-        }
-        Button("Log contact", systemImage: "checkmark") { logKind = person.pendingIncoming.isEmpty ? .outreach : .reply }.buttonStyle(.bordered)
-        Button("They reached out") { logKind = .incoming }.buttonStyle(.bordered)
-        if person.suggestion().ready {
-            Menu("Later") {
-                Button("Tomorrow") { snooze(person, 1) }
-                Button("In three days") { snooze(person, 3) }
-                Button("Next week") { snooze(person, 7) }
+                Button("We spent time together") { record(.conversation, suggestion) }
+                Button("We made a plan…") { showingPlan = true }
             }.buttonStyle(.bordered)
         }
     }
-    @ViewBuilder private func history(_ person: Person) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Connection history").font(.headline)
-            historyList(person)
-        }
-    }
-    @ViewBuilder private func historyList(_ person: Person) -> some View {
-        ForEach(person.contacts.sorted { $0.date > $1.date }) { entry in
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(entry.kind.title) · \(entry.date.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(.secondary)
-                if entry.kind == .conversation { Text("Started by: \(entry.initiator.rawValue)").font(.caption).foregroundStyle(.secondary) }
-                if !entry.note.isEmpty { Text(entry.note) }
-                if entry.kind == .incoming && entry.resolvedAt == nil {
-                    Button("No reply needed") { store.update(person.id) { $0.resolveIncoming(entry.id) } }.buttonStyle(.borderless)
+    private func choiceActions(_ suggestion: RelationshipSuggestion) -> some View {
+        Group {
+            Menu("Later") {
+                ForEach([1, 3, 7], id: \.self) { days in
+                    Button(days == 1 ? "Tomorrow" : days == 3 ? "In a few days" : "Next week") {
+                        store.update(person.id) {
+                            $0.snooze(until: Calendar.current.date(byAdding: .day, value: days, to: .now) ?? .now)
+                            $0.recordFeedback(.snoozed, ideaId: suggestion.opportunity?.ideaId, action: suggestion.action)
+                        }
+                    }
                 }
-            }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 6)
+            }
+            Button(suggestion.action == .reply ? "Leave it here" : "Not for me") {
+                store.update(person.id) { current in
+                    if suggestion.action == .reply { for entry in current.pendingIncoming { current.resolveIncoming(entry.id) } }
+                    else if let opportunity = suggestion.opportunity {
+                        if opportunity.isRitual, let i = current.connection.rituals.firstIndex(where: { $0.id == opportunity.id }) { current.connection.rituals[i].dismissed = true }
+                        else { current.dismissIdea(opportunity.id) }
+                        current.recordFeedback(.notForMe, ideaId: opportunity.id)
+                    } else { current.recordFeedback(.notForMe, action: suggestion.action) }
+                }
+            }.buttonStyle(.borderless)
+        }.font(.callout)
+    }
+    private func record(_ kind: ContactKind, _ suggestion: RelationshipSuggestion) {
+        var entry: UUID?
+        if store.update(person.id, change: { current in
+            entry = current.recordContact(kind: kind, ideaId: suggestion.opportunity?.ideaId)
+        }), let entry {
+            acknowledged(ConnectionReceipt(personId: person.id, entryId: entry,
+                text: kind == .outreach ? "You've reached out to \(person.name). That's enough for now." : kind == .reply ? "Reply recorded. Nothing more needed." : "Time with \(person.name), remembered."))
         }
     }
-    private func snooze(_ person: Person, _ days: Int) {
-        let until = Calendar.current.date(byAdding: .day, value: days, to: .now) ?? .now
-        store.update(person.id) { person in
-            person.snooze(until: until)
-            if let idea = person.suggestion().opportunity { person.recordFeedback(.snoozed, ideaId: idea.ideaId) }
-        }
-    }
-    private func launch(_ person: Person) {
-        let scheme = person.method == .email ? "mailto" : person.method == .call ? "tel" : "sms"
+}
+
+extension Person {
+    var contactURL: URL? {
+        guard method != .inPerson, !address.isEmpty else { return nil }
+        let scheme = method == .email ? "mailto" : method == .call ? "tel" : "sms"
         let allowed = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "?#&"))
-        guard let encoded = person.address.addingPercentEncoding(withAllowedCharacters: allowed), let url = URL(string: "\(scheme):\(encoded)") else { openFailed = true; return }
-        openURL(url) { accepted in if !accepted { openFailed = true } }
+        guard let encoded = address.addingPercentEncoding(withAllowedCharacters: allowed) else { return nil }
+        return URL(string: "\(scheme):\(encoded)")
+    }
+}
+
+struct PersonDetail: View {
+    @Environment(RelationshipStore.self) private var store
+    @Environment(\.openURL) private var openURL
+    let personId: UUID
+    @Environment(ContactsController.self) private var contacts
+    @State private var showingMerge = false
+    @State private var editing: Person?
+    @State private var showingContext = false
+    @State private var logKind: ContactKind?
+    @State private var correcting: ContactEntry?
+    @State private var showingPlan = false
+    @State private var editingPlan: ConnectionPlan?
+    @State private var receipt: ConnectionReceipt?
+    @State private var openFailed = false
+    var body: some View {
+        if let person = store.people.first(where: { $0.id == personId }) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    HStack(alignment: .top, spacing: 14) {
+                        Avatar(name: person.name)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(person.name).font(.largeTitle.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                            Text(person.intention.title).font(.callout).foregroundStyle(.secondary)
+                        }
+                    }
+                    if let birthday = person.birthday { Label(birthday.label, systemImage: "gift").foregroundStyle(.secondary) }
+                    ReceiptView(receipt: $receipt)
+                    if person.suggestion().ready {
+                        OpportunityCard(person: person) { receipt = $0 }
+                    } else if !person.pendingOutreach.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("You've reached out", systemImage: "paperplane").font(.headline)
+                            Text("Your message is sent. Nothing else needed here.").foregroundStyle(.secondary)
+                            DisclosureGroup("When you'd like new ideas") {
+                                Text("If the invitation no longer needs to stay open, you can allow new ideas without recording a reply.").font(.callout).foregroundStyle(.secondary)
+                                Button("Allow new ideas") { store.update(person.id) { current in for entry in current.pendingOutreach { current.resolveOutreach(entry.id) } } }
+                            }.font(.callout)
+                        }
+                    } else if person.activePlans.isEmpty {
+                        Text(person.suggestion().title).foregroundStyle(.secondary)
+                    }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) { detailActions(person) }
+                        VStack(alignment: .leading, spacing: 12) { detailActions(person) }
+                    }
+                    if !person.activePlans.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Plans together").font(.title3.weight(.semibold))
+                            ForEach(person.activePlans) { plan in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(plan.title).font(.headline)
+                                    Text(plan.date.formatted(date: .abbreviated, time: .shortened)).foregroundStyle(.secondary)
+                                    ViewThatFits {
+                                        HStack(spacing: 14) { planActions(plan, person) }
+                                        VStack(alignment: .leading, spacing: 12) { planActions(plan, person) }
+                                    }
+                                }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 14))
+                            }
+                        }
+                    }
+                    Divider()
+                    DisclosureGroup("What you share") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if !person.context.isEmpty { Text(person.context) }
+                            ForEach(person.interests) { interest in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(interest.name).font(.headline)
+                                    if !interest.detail.isEmpty { Text(interest.detail).font(.callout) }
+                                    Text(interest.provenance).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            ForEach(person.memories.suffix(3)) { memory in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(memory.text)
+                                    Text(memory.provenance).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Button("Edit memories, interests and ideas") { showingContext = true }
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
+                    }
+                    DisclosureGroup("Details") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text((person.relationshipTypes + person.contexts).joined(separator: " · "))
+                            if !person.importSources.isEmpty { Text("Remembered with \(person.importSources.joined(separator: ", "))") }
+                            Text(person.paused ? "Suggestions paused" : "Ideas may return after your \(person.rhythmDays)-day rhythm. This is a preference, never a deadline.")
+                            ForEach(person.alternateContactDetails) { detail in Text(detail.method.rawValue + ": " + detail.address) }
+                            ForEach(person.contactLinks.filter { $0.deviceID == contacts.deviceID }) { link in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Linked to Contacts: " + link.contact.name)
+                                    ForEach(Array(Set(link.contact.phones + link.contact.emails)).sorted(), id: \.self) { address in
+                                        if address != person.address { Text(address).textSelection(.enabled) }
+                                    }
+                                    Toggle("Follow Contacts changes", isOn: Binding(get: { link.followsChanges }, set: { value in store.update(person.id) { current in if let i = current.contactLinks.firstIndex(where: { $0.id == link.id }) { current.contactLinks[i].followsChanges = value } }; if value { Task { await contacts.followChanges(); store.reload() } } }))
+                                    Button("Unlink contact") { store.update(person.id) { $0.contactLinks.removeAll { $0.id == link.id } } }
+                                }
+                            }
+                            Button("Edit preferences") { editing = person }
+                            Button("Merge with another person…") { showingMerge = true }
+                        }.font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
+                    }
+                    DisclosureGroup("Remembered moments") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Only what you've chosen to record. Unrecorded time together matters just as much.").font(.caption).foregroundStyle(.secondary)
+                            ForEach(person.contacts.sorted { $0.date > $1.date }) { entry in
+                                HStack(alignment: .top, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(entry.kind.title).font(.callout.weight(.medium))
+                                        Text(entry.date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
+                                        if !entry.note.isEmpty { Text(entry.note).font(.callout) }
+                                        if entry.kind == .incoming && entry.resolvedAt == nil {
+                                            Button("No reply needed") { store.update(person.id) { $0.resolveIncoming(entry.id) } }.font(.callout)
+                                        }
+                                    }.frame(maxWidth: .infinity, alignment: .leading)
+                                    Menu {
+                                        Button("Correct…") { correcting = entry }
+                                        Button("Remove this log", role: .destructive) { store.update(person.id) { $0.removeContact(entry.id) } }
+                                    } label: { Label("Change log", systemImage: "ellipsis") }.labelStyle(.iconOnly)
+                                }.padding(.vertical, 6)
+                            }
+                            ForEach(person.plans.filter { $0.status == .cancelled }) { plan in
+                                Text("\(plan.title) · Set aside").font(.callout).foregroundStyle(.secondary)
+                            }
+                        }.padding(.top, 12)
+                    }
+                }.padding(24).frame(maxWidth: 720, alignment: .leading).frame(maxWidth: .infinity)
+            }
+            .navigationTitle(person.name)
+            .toolbar { ToolbarItem(placement: .primaryAction) { Button("Edit") { editing = person } } }
+            .sheet(item: $editing) { PersonEditor(person: $0) }
+            .sheet(isPresented: $showingMerge) { PersonMergeView(person: person) }
+            .sheet(isPresented: $showingContext) { ConnectionContextView(person: person) }
+            .sheet(item: $logKind) { ContactLogger(person: person, initialKind: $0) }
+            .sheet(item: $correcting) { ContactLogger(person: person, initialKind: $0.kind, original: $0) }
+            .sheet(isPresented: $showingPlan) { PlanEditor(person: person) }
+            .sheet(item: $editingPlan) { PlanEditor(person: person, original: $0) }
+            .alert("Couldn't open the contact app", isPresented: $openFailed) { Button("OK", role: .cancel) {} } message: { Text("Use your usual app, or check this person's contact details.") }
+        } else {
+            ContentUnavailableView("This person is no longer here", systemImage: "person")
+        }
+    }
+    private func detailActions(_ person: Person) -> some View {
+        Group {
+            if !person.suggestion().ready, let url = person.contactURL {
+                Button("Open \(person.method.rawValue)", systemImage: "arrow.up.forward.app") { openURL(url) { if !$0 { openFailed = true } } }.buttonStyle(.bordered)
+            }
+            Menu("Remember a moment") { ForEach(ContactKind.allCases) { kind in Button(kind.title) { logKind = kind } } }.buttonStyle(.bordered)
+            Button("Add a plan") { showingPlan = true }.buttonStyle(.borderless)
+        }.font(.callout)
+    }
+    private func planActions(_ plan: ConnectionPlan, _ person: Person) -> some View {
+        Group {
+            if plan.date <= .now {
+                Button("We spent time together") {
+                    var entry: UUID?
+                    if store.update(person.id, change: { entry = $0.finishPlan(plan.id, at: plan.date) }), let entry {
+                        receipt = ConnectionReceipt(personId: person.id, entryId: entry, text: "Time together, remembered.")
+                    }
+                }
+            }
+            Button("Change…") { editingPlan = plan }
+            Button("Set aside") { store.update(person.id) { $0.cancelPlan(plan.id) } }
+        }.font(.callout).buttonStyle(.borderless)
     }
 }
 
@@ -432,34 +657,95 @@ struct ContactLogger: View {
     @Environment(RelationshipStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let person: Person
+    let original: ContactEntry?
     @State private var kind: ContactKind
-    @State private var initiator: Initiator = .unknown
-    @State private var contactDate = Date.now
-    @State private var note = ""
-    init(person: Person, initialKind: ContactKind) { self.person = person; _kind = State(initialValue: initialKind) }
+    @State private var initiator: Initiator
+    @State private var contactDate: Date
+    @State private var note: String
+    init(person: Person, initialKind: ContactKind, original: ContactEntry? = nil) {
+        self.person = person; self.original = original
+        _kind = State(initialValue: original?.kind ?? initialKind)
+        _initiator = State(initialValue: original?.initiator ?? .unknown)
+        _contactDate = State(initialValue: original?.date ?? .now)
+        _note = State(initialValue: original?.note ?? "")
+    }
     var body: some View {
         NavigationStack {
             Form {
-                Picker("What happened?", selection: $kind) { ForEach(ContactKind.allCases, id: \.self) { Text($0.title).tag($0) } }
-                if kind == .conversation {
-                    Picker("Who started it?", selection: $initiator) {
-                        Text("Me").tag(Initiator.me); Text("Them").tag(Initiator.them)
-                        Text("Both / naturally").tag(Initiator.mutual); Text("Not sure").tag(Initiator.unknown)
+                Picker("What happened?", selection: $kind) { ForEach(ContactKind.allCases) { Text($0.title).tag($0) } }
+                Text(explanation).font(.callout).foregroundStyle(.secondary)
+                DisclosureGroup("Date and a note (optional)") {
+                    DatePicker("When", selection: $contactDate, in: ...Date.now, displayedComponents: [.date, .hourAndMinute])
+                    TextField("Something to remember", text: $note, axis: .vertical)
+                    if kind == .conversation {
+                        Picker("Who started it? (optional)", selection: $initiator) {
+                            Text("Not recorded").tag(Initiator.unknown); Text("Me").tag(Initiator.me)
+                            Text("Them").tag(Initiator.them); Text("Both / naturally").tag(Initiator.mutual)
+                        }
                     }
                 }
-                DatePicker("When", selection: $contactDate, in: ...Date.now, displayedComponents: .date)
-                TextField("Something to remember (optional)", text: $note, axis: .vertical)
-                Text(kind == .incoming ? "This creates a reply suggestion. If you already replied, log a reply or catch-up too." : kind == .ambient ? "Seeing each other in passing won't restart the rhythm for a proper connection." : kind == .reply ? "This records your reply and closes earlier incoming messages. You don't need to wait for another reply." : "Record what actually happened. A catch-up counts whoever started it.").font(.caption).foregroundStyle(.secondary)
-            }.formStyle(.grouped).navigationTitle("Contact with \(person.name)")
+            }.formStyle(.grouped).navigationTitle(original == nil ? "Remember a moment" : "Correct this moment")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) { Button("Save") {
-                        if store.update(person.id, change: { $0.recordContact(at: contactDate, note: note, kind: kind, initiator: kind == .conversation ? initiator : nil) }) { dismiss() }
+                        if store.update(person.id, change: { current in
+                            if let original {
+                                guard current.correctContact(original, date: contactDate, note: note, kind: kind, initiator: initiator) else { throw RepositoryError.conflict }
+                            } else { current.recordContact(at: contactDate, note: note, kind: kind, initiator: kind == .conversation ? initiator : nil) }
+                        }) { dismiss() }
                     } }
                 }
         }
         #if os(macOS)
-        .frame(width: 520, height: 380)
+        .frame(width: 520, height: 430)
+        #endif
+    }
+    private var explanation: String {
+        switch kind {
+        case .outreach: "Sending a message is already a good moment. New invitations will wait; there's no need to record a reply."
+        case .incoming: "Keep a reply open if you'd like. You can leave it here whenever you choose."
+        case .conversation: "A conversation, a game, a walk — time you actually shared."
+        case .reply: "Your reply is enough. It closes earlier incoming messages."
+        case .ambient: "An everyday moment. Remember it if you'd like; it doesn't change when other ideas appear."
+        }
+    }
+}
+
+struct PlanEditor: View {
+    @Environment(RelationshipStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let person: Person
+    let opportunity: ConnectionOpportunity?
+    let original: ConnectionPlan?
+    @State private var title: String
+    @State private var date: Date
+    init(person: Person, opportunity: ConnectionOpportunity? = nil, original: ConnectionPlan? = nil) {
+        self.person = person; self.opportunity = opportunity; self.original = original
+        _title = State(initialValue: original?.title ?? opportunity?.activity ?? "")
+        _date = State(initialValue: original?.date ?? Calendar.current.date(byAdding: .day, value: 1, to: .now)!)
+    }
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("What have you arranged?", text: $title, axis: .vertical)
+                DatePicker("When", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                Text("For something you've agreed together. An invitation you've sent can simply stay a sent message. A plan doesn't record contact or create extra reminders.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }.formStyle(.grouped).navigationTitle(original == nil ? "A plan with \(person.name)" : "Change your plan")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) { Button("Save") {
+                        if store.update(person.id, change: { current in
+                            if let original {
+                                guard let i = current.plans.firstIndex(where: { $0 == original }) else { throw RepositoryError.conflict }
+                                current.plans[i].title = title.trimmingCharacters(in: .whitespacesAndNewlines); current.plans[i].date = date
+                            } else { current.addPlan(title: title, date: date, ideaId: opportunity?.ideaId) }
+                        }) { dismiss() }
+                    }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || original == nil && date < .now) }
+                }
+        }
+        #if os(macOS)
+        .frame(width: 520, height: 340)
         #endif
     }
 }
@@ -554,10 +840,12 @@ struct ConnectionContextView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(ritual.title)
+                                if ritual.dismissed { Text("Set aside").font(.caption).foregroundStyle(.secondary) }
                                 if !ritual.note.isEmpty { Text(ritual.note).font(.caption).foregroundStyle(.secondary) }
                                 Text(ritual.days == nil ? "No set frequency" : "Roughly every \(ritual.days!) days").font(.caption2).foregroundStyle(.secondary)
                             }
                             Spacer()
+                            if ritual.dismissed { Button("Bring back") { store.update(person.id) { $0.restoreRitual(ritual.id) } }.buttonStyle(.borderless).font(.caption) }
                             Button("Delete", role: .destructive) { store.update(person.id) { $0.removeRitual(ritual.id) } }.buttonStyle(.borderless).font(.caption)
                         }
                     }
@@ -741,7 +1029,7 @@ struct CategoryChips: View {
                         if selection.contains(tag) { selection.removeAll { $0 == tag } } else { selection.append(tag) }
                     } label: {
                         HStack(spacing: 5) { if selection.contains(tag) { Image(systemName: "checkmark") }; Text(tag) }.frame(maxWidth: .infinity).padding(.vertical, 6)
-                    }.buttonStyle(.bordered).tint(selection.contains(tag) ? .teal : .gray)
+                    }.buttonStyle(.bordered).tint(selection.contains(tag) ? .accentColor : .gray)
                     .accessibilityLabel(tag).accessibilityValue(selection.contains(tag) ? "Selected" : "Not selected")
                 }
             }
@@ -763,40 +1051,46 @@ struct PersonEditor: View {
     private let original: Person
     init(person: Person) { _person = State(initialValue: person); original = person }
     @State private var deleting = false
+    @State private var firstIdea = ""
+    @State private var birthdayValid = true
     private var exists: Bool { store.people.contains { $0.id == person.id } }
     var body: some View {
         NavigationStack {
             Form {
                 Section { TextField("Name", text: $person.name) }
-                Section("Who are they to you?") {
-                    CategoryChips(options: Person.typeOptions, selection: $person.relationshipTypes)
-                    Text("Choose more than one, or add your own. A colleague can be a close friend too.").font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Where your lives overlap") { CategoryChips(options: Person.contextOptions, selection: $person.contexts) }
-                Section("What would you like for this relationship?") {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                        ForEach(RelationshipIntention.allCases, id: \.self) { intention in
-                            Button { person.chooseIntention(intention) } label: {
-                                HStack { if person.intention == intention { Image(systemName: "checkmark") }; Text(intention.title) }.frame(maxWidth: .infinity).padding(.vertical, 8)
-                            }.buttonStyle(.bordered).tint(person.intention == intention ? .teal : .gray)
-                            .accessibilityValue(person.intention == intention ? "Selected" : "Not selected")
-                        }
+                if !exists {
+                    Section("Something you'd like to do together (optional)") {
+                        TextField("A game evening, a walk, a project…", text: $firstIdea, axis: .vertical)
+                        Text("One idea is enough. You can add or change it later.").font(.caption).foregroundStyle(.secondary)
                     }
-                    Text(intentionExplanation).font(.caption).foregroundStyle(.secondary)
                 }
-                Section("Keep the nuance") { TextField("Things to remember, ask about, or understand", text: $person.context, axis: .vertical).lineLimit(3...6) }
-                Section("How you connect") {
-                    Picker("Prefer", selection: $person.method) { ForEach(ContactMethod.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                    if person.method != .inPerson { TextField(person.method == .email ? "Email address" : "Phone number", text: $person.address) }
+                BirthdayFields(person: $person, birthdayValid: $birthdayValid)
+                Section("Keep the nuance") {
+                    TextField("Something worth remembering (optional)", text: $person.context, axis: .vertical).lineLimit(2...6)
                 }
                 Section {
-                    Text("\(person.rhythmIsCustom ? "Your rhythm" : "Starting rhythm"): every \(person.rhythmDays) days").font(.callout)
-                    DisclosureGroup("Adjust the rhythm") {
-                        Stepper("Every \(person.rhythmDays) days", value: Binding(get: { person.rhythmDays }, set: { person.rhythmDays = $0; person.rhythmIsCustom = true }), in: 1...365)
-                        Button("Use suggested rhythm (\(person.suggestedRhythm) days)") { person.applySuggestedRhythm() }
-                        Text("A rhythm decides when a gentle prompt appears, not what you should say or whether you should reach out. Nothing becomes overdue here. Actual contact history determines the next suggestion.").font(.caption).foregroundStyle(.secondary)
+                    DisclosureGroup("Relationship preferences") {
+                        Picker("Intention", selection: Binding(get: { person.intention }, set: { person.chooseIntention($0) })) {
+                            ForEach(RelationshipIntention.allCases, id: \.self) { Text($0.title).tag($0) }
+                        }
+                        Text(intentionExplanation).font(.caption).foregroundStyle(.secondary)
+                        DisclosureGroup("Categories") {
+                            Text("Who they are to you").font(.subheadline)
+                            CategoryChips(options: Person.typeOptions, selection: $person.relationshipTypes)
+                            Text("Where your lives overlap").font(.subheadline)
+                            CategoryChips(options: Person.contextOptions, selection: $person.contexts)
+                        }
+                        DisclosureGroup("Contact details") {
+                            Picker("Prefer", selection: $person.method) { ForEach(ContactMethod.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                            if person.method != .inPerson { TextField(person.method == .email ? "Email address" : "Phone number", text: $person.address) }
+                        }
+                        DisclosureGroup("Suggestion rhythm") {
+                            Stepper("Every \(person.rhythmDays) days", value: Binding(get: { person.rhythmDays }, set: { person.rhythmDays = $0; person.rhythmIsCustom = true }), in: 1...365)
+                            Button("Use starting rhythm (\(person.suggestedRhythm) days)") { person.applySuggestedRhythm() }
+                            Text("Only a preference for when ideas may return. You don't need a schedule to care about someone.").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Toggle("Pause all suggestions", isOn: $person.paused)
                     }
-                    Toggle("Pause all suggestions", isOn: $person.paused)
                 }
                 if exists { Section { Button("Delete person", role: .destructive) { deleting = true } } }
             }.formStyle(.grouped).navigationTitle(exists ? "Edit person" : "Add person")
@@ -809,15 +1103,16 @@ struct PersonEditor: View {
                         person.name = person.name.trimmingCharacters(in: .whitespacesAndNewlines); person.address = person.address.trimmingCharacters(in: .whitespacesAndNewlines)
                         person.circle = person.relationshipTypes.joined(separator: ", ")
                         person.intentionChosen = true
+                        if !exists, !firstIdea.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { person.addIdea(activity: firstIdea) }
                         if store.save(person, expected: original.name.isEmpty ? nil : original) { dismiss() }
-                    }.disabled(person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+                    }.disabled(person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !birthdayValid) }
                 }
                 .confirmationDialog("Delete \(person.name) and their contact history?", isPresented: $deleting, titleVisibility: .visible) {
                     Button("Delete person", role: .destructive) { if store.delete(original) { dismiss() } }
                 }
         }
         #if os(macOS)
-        .frame(width: 580, height: 740)
+        .frame(width: 580, height: 600)
         #endif
     }
     private var intentionExplanation: String {

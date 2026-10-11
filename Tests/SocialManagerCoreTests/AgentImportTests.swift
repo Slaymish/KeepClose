@@ -223,8 +223,8 @@ final class AgentImportTests: XCTestCase {
         let person = try AgentImportPlan.make(batch: imported, existing: []).changes[0].person
         XCTAssertEqual(person.ideas.first?.confidence, .suggested)
         XCTAssertEqual(person.ideas.first?.sources, [.agent])
-        let opportunity = try XCTUnwrap(person.opportunities(at: .now, calendar: .current, readyOnly: false).first)
-        XCTAssertTrue(opportunity.provenance.contains("not"))
+        XCTAssertTrue(person.opportunities(at: .now, calendar: .current, readyOnly: false).isEmpty, "An unsupported imported idea is kept for review but not automatically offered.")
+        XCTAssertEqual(person.visibleIdeas.count, 1)
     }
 
     func testExplicitIntentionFillsAnUndecidedRecordButNeverOverridesAChoice() throws {

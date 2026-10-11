@@ -8,10 +8,33 @@ concurrency:
   group: keepclose-release
   cancel-in-progress: false
 jobs:
+  route:
+    runs-on: ubuntu-latest
+    outputs:
+      self_signed: ${{ steps.route.outputs.self_signed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Identify explicitly self-signed releases
+        id: route
+        shell: bash
+        run: |
+          # The local packaging script uses this exact annotated-tag subject.
+          # Normal release tags retain the credential-gated notarized publication path.
+          subject=$(git for-each-ref --format='%(contents:subject)' "refs/tags/$GITHUB_REF_NAME")
+          kind=$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")
+          if [[ "$kind" == tag && "$subject" == "Keep Close ${GITHUB_REF_NAME#v} (self-signed, not notarized)" ]]; then
+            echo 'self_signed=true' >> "$GITHUB_OUTPUT"
+            echo 'Signed local artifacts are published separately; all platform checks still run.'
+          else
+            echo 'self_signed=false' >> "$GITHUB_OUTPUT"
+          fi
   checks:
     uses: ./.github/workflows/ci.yml
   publish:
-    needs: checks
+    needs: [checks, route]
+    if: needs.route.outputs.self_signed != 'true'
     runs-on: macos-15
     permissions:
       contents: write

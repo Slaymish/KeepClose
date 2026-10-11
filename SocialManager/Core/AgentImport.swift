@@ -200,7 +200,7 @@ public struct AgentImportPlan: Codable, Sendable {
         try batch.validate()
         var changes: [AgentImportChange] = []
         var matchedIDs = Set<UUID>()
-        let byID = Dictionary(grouping: existing, by: \.id)
+        let byID = Dictionary(grouping: existing.flatMap { person in ([person.id] + person.mergedPersonIDs).map { ($0, person) } }, by: { $0.0 }).mapValues { $0.map { $0.1 } }
         let byName = Dictionary(grouping: existing, by: { AgentImportBatch.normalized($0.name) })
         for record in batch.people {
             let name = record.name.trimmingCharacters(in: .whitespacesAndNewlines)

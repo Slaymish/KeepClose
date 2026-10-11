@@ -9,7 +9,9 @@
 /* Begin PBXBuildFile section */
 		370285D1F0716AFD5EE29300 /* NativeSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = FAE1AF2B9BF0698EB4521E24 /* NativeSecurity */; };
 		3AA5F53A445919031F8D8651 /* AppLockController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDCEB556D5686FF8A4E831A /* AppLockController.swift */; };
+		47390FAC238B86C8AF5BB0C6 /* PeopleIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF4B384CD11F2DE9C6BC926B /* PeopleIntegration.swift */; };
 		4D91070DE761F58B6DBFB870 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = E538E62CF796D6E313AF737F /* Sparkle */; };
+		69C2B2ED0817C3C44059A2BB /* BirthdayReminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4FB664928F5034B548B711F /* BirthdayReminders.swift */; };
 		6B425481A5D244529C2FB3DD /* AppPrivacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2232C5361D0CB03503323925 /* AppPrivacy.swift */; };
 		749BC5C15E54BA7C11ACA044 /* AppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4753706A57E1913B056C5070 /* AppView.swift */; };
 		7CB34E2B1259D299775F7733 /* NativeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5F887367316DBEF7A0F2060D /* NativeCore */; };
@@ -21,12 +23,15 @@
 		B61DA066B68E269EE8E8171D /* AgentInterchange in Frameworks */ = {isa = PBXBuildFile; productRef = 4D68D0BEBD7B8ADFA784C7A8 /* AgentInterchange */; };
 		BB3A36099CA5FF0000D12A5D /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622EEE96C957D14213AEC1AC /* Store.swift */; };
 		C519AC59C004ED431390C171 /* NativeSync in Frameworks */ = {isa = PBXBuildFile; productRef = 7C6539E424D5B545D32F3243 /* NativeSync */; };
+		CDD7D4BBD99302F51EB87BEB /* PeopleIntegrationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91BCF22D1119E81EE2E7883 /* PeopleIntegrationViews.swift */; };
+		CEC2CEC495A61A4B136BA0F4 /* ContactsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FA97D5FD57C590BE6CE58D /* ContactsController.swift */; };
 		E44AACCF77BACCFECD7C5816 /* KeepCloseSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0755C2017D7980AC22485866 /* KeepCloseSync.swift */; };
 		F43A8EB2EDE350611E5F9680 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9965A5B693388ECDCB24FB18 /* AppUpdater.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0755C2017D7980AC22485866 /* KeepCloseSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepCloseSync.swift; sourceTree = "<group>"; };
+		21FA97D5FD57C590BE6CE58D /* ContactsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsController.swift; sourceTree = "<group>"; };
 		2232C5361D0CB03503323925 /* AppPrivacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPrivacy.swift; sourceTree = "<group>"; };
 		3CDCEB556D5686FF8A4E831A /* AppLockController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockController.swift; sourceTree = "<group>"; };
 		3F828510B39C56F1AFBFE699 /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
@@ -36,8 +41,11 @@
 		622EEE96C957D14213AEC1AC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
 		7C5274067776E1845E5A620C /* SocialManager.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SocialManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9965A5B693388ECDCB24FB18 /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
+		A4FB664928F5034B548B711F /* BirthdayReminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BirthdayReminders.swift; sourceTree = "<group>"; };
 		D8CF97B9C5A9B54DD0D6E0E4 /* Repository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repository.swift; sourceTree = "<group>"; };
+		D91BCF22D1119E81EE2E7883 /* PeopleIntegrationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleIntegrationViews.swift; sourceTree = "<group>"; };
 		D9BDF65DCBCC51159F178448 /* AgentImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentImportView.swift; sourceTree = "<group>"; };
+		EF4B384CD11F2DE9C6BC926B /* PeopleIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleIntegration.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +70,8 @@
 			children = (
 				3CDCEB556D5686FF8A4E831A /* AppLockController.swift */,
 				9965A5B693388ECDCB24FB18 /* AppUpdater.swift */,
+				A4FB664928F5034B548B711F /* BirthdayReminders.swift */,
+				21FA97D5FD57C590BE6CE58D /* ContactsController.swift */,
 				568F5C92D48304D6B23F31B1 /* Info.plist */,
 				0755C2017D7980AC22485866 /* KeepCloseSync.swift */,
 				622EEE96C957D14213AEC1AC /* Store.swift */,
@@ -76,6 +86,7 @@
 			children = (
 				4426ECAED86B8FC3E6693B95 /* AgentImport.swift */,
 				2232C5361D0CB03503323925 /* AppPrivacy.swift */,
+				EF4B384CD11F2DE9C6BC926B /* PeopleIntegration.swift */,
 				3F828510B39C56F1AFBFE699 /* Person.swift */,
 				D8CF97B9C5A9B54DD0D6E0E4 /* Repository.swift */,
 			);
@@ -87,6 +98,7 @@
 			children = (
 				D9BDF65DCBCC51159F178448 /* AgentImportView.swift */,
 				4753706A57E1913B056C5070 /* AppView.swift */,
+				D91BCF22D1119E81EE2E7883 /* PeopleIntegrationViews.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -182,7 +194,11 @@
 				6B425481A5D244529C2FB3DD /* AppPrivacy.swift in Sources */,
 				F43A8EB2EDE350611E5F9680 /* AppUpdater.swift in Sources */,
 				749BC5C15E54BA7C11ACA044 /* AppView.swift in Sources */,
+				69C2B2ED0817C3C44059A2BB /* BirthdayReminders.swift in Sources */,
+				CEC2CEC495A61A4B136BA0F4 /* ContactsController.swift in Sources */,
 				E44AACCF77BACCFECD7C5816 /* KeepCloseSync.swift in Sources */,
+				47390FAC238B86C8AF5BB0C6 /* PeopleIntegration.swift in Sources */,
+				CDD7D4BBD99302F51EB87BEB /* PeopleIntegrationViews.swift in Sources */,
 				866FADE59FC5626B8B729DD2 /* Person.swift in Sources */,
 				9A191D1B50718A5528DACC45 /* Repository.swift in Sources */,
 				BB3A36099CA5FF0000D12A5D /* Store.swift in Sources */,
@@ -241,6 +257,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Keep Close";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Choose people to bring into Keep Close, and optionally follow their name, contact details and birthday from Contacts.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your private relationships and notes in Keep Close.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Keep Close syncs your relationships with your paired Mac or iPhone on this network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -310,6 +327,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Keep Close";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Choose people to bring into Keep Close, and optionally follow their name, contact details and birthday from Contacts.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your private relationships and notes in Keep Close.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Keep Close syncs your relationships with your paired Mac or iPhone on this network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -330,7 +348,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				ENABLE_APP_SANDBOX = YES;
 				"ENABLE_APP_SANDBOX[sdk=macosx*]" = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -346,7 +364,7 @@
 					"@executable_path/Frameworks",
 				);
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "$(inherited) @executable_path/../Frameworks";
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.keepclose.KeepClose;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
@@ -362,7 +380,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				ENABLE_APP_SANDBOX = YES;
 				"ENABLE_APP_SANDBOX[sdk=macosx*]" = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -378,7 +396,7 @@
 					"@executable_path/Frameworks",
 				);
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "$(inherited) @executable_path/../Frameworks";
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.keepclose.KeepClose;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";

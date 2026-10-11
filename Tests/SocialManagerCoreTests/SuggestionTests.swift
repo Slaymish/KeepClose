@@ -17,6 +17,7 @@ final class SuggestionTests: XCTestCase {
     }
     func testAmbientDoesNotResetConnectionRhythm() {
         var person = Person(name: "Alex", createdAt: now)
+        person.addIdea(activity: "an evening of Stardew Valley")
         person.recordContact(at: now, kind: .ambient)
         XCTAssertNil(person.lastContact)
         XCTAssertTrue(person.isDue(at: now, calendar: calendar))
@@ -31,21 +32,22 @@ final class SuggestionTests: XCTestCase {
         person.paused = true
         XCTAssertFalse(person.isDue(at: now, calendar: calendar))
     }
-    func testTwoUnansweredAttemptsSuggestRoomAndResponseRestoresRhythm() {
+    func testSentMessagesStayQuietAndSharedTimeRestoresRhythm() {
         var person = Person(name: "Alex", rhythmDays: 7, createdAt: now)
         person.recordContact(at: now.addingTimeInterval(-20 * 86400))
         person.recordContact(at: now.addingTimeInterval(-10 * 86400))
-        XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .giveSpace)
+        XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .later)
         XCTAssertFalse(person.isDue(at: now, calendar: calendar))
         person.recordContact(at: now, kind: .conversation, initiator: .them)
         XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .later)
     }
-    func testThemInitiatingDoesNotTriggerPrematureNudge() {
+    func testInitiationHistoryDoesNotCreateATask() {
         var person = Person(name: "Alex", rhythmDays: 7, createdAt: now)
         for days in [21, 14, 7] {
             person.recordContact(at: now.addingTimeInterval(Double(-days * 86400)), kind: .conversation, initiator: .them)
         }
-        XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .takeInitiative)
+        XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .hello)
+        XCTAssertFalse(person.isDue(at: now, calendar: calendar), "Initiation history does not create an obligation.")
         person.recordContact(at: now, kind: .conversation, initiator: .them)
         XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .later)
     }
@@ -53,7 +55,8 @@ final class SuggestionTests: XCTestCase {
         var person = Person(name: "Alex", createdAt: now)
         person.intention = .grow; person.contexts = ["Online", "Work"]; person.relationshipTypes = ["Colleague", "Friend"]
         person.applySuggestedRhythm()
-        XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .timeTogether)
+        XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .hello)
+        XCTAssertFalse(person.isDue(at: now, calendar: calendar), "Grow is not a reason to manufacture an activity.")
         XCTAssertLessThan(person.rhythmDays, 21)
         person.intention = .unsure
         XCTAssertEqual(person.suggestion(at: now, calendar: calendar).action, .reflect)

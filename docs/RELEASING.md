@@ -51,6 +51,9 @@ in System Settings → Privacy & Security, or clears the quarantine flag on the 
 KeepClose Sparkle key and publishes the feed. Set `SPARKLE_KEY_FILE` to use an explicitly provided key file;
 otherwise it uses the existing `KeepClose` Keychain account. It never generates or rotates keys. Test updating
 an older installation before publishing. Sparkle authentication does not provide Apple notarization.
+Explicitly self-signed annotated tags still run the Release workflow's core/CLI tests and both
+platform builds, while skipping its Apple notarization/publication job; the local packaging path
+publishes the verified archives and feed instead.
 
 `scripts/release-secrets.sh <setup|check|load|tag>` loads the six Apple secrets into the repository when
 the credentials do exist, and can tag the prepared release afterwards. `scripts/build-selfsigned.sh`

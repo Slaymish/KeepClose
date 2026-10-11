@@ -89,6 +89,7 @@ private struct AuthenticationContext: @unchecked Sendable {
 struct ProtectedAppView: View {
     @Environment(AppLockController.self) private var appLock
     @Environment(RelationshipStore.self) private var store
+    @Environment(BirthdayReminders.self) private var birthdays
     @Environment(\.scenePhase) private var phase
     var body: some View {
         ZStack {
@@ -100,9 +101,18 @@ struct ProtectedAppView: View {
         }
         .transaction { $0.disablesAnimations = appLock.locked || appLock.obscured }
         .task { await store.watchChanges() }
+        .task {
+            // The lock gates screens; already-authorized local reminders keep reflecting edits.
+            while !Task.isCancelled {
+                await birthdays.refresh(people: store.people, names: store.includeNamesInReminders)
+                do { try await Task.sleep(for: .seconds(30)) } catch { return }
+            }
+        }
+        .onChange(of: store.people) { _, _ in Task { await birthdays.refresh(people: store.people, names: store.includeNamesInReminders) } }
+        .onChange(of: store.includeNamesInReminders) { _, _ in Task { await birthdays.refresh(people: store.people, names: store.includeNamesInReminders) } }
         .onChange(of: phase, initial: true) { _, phase in
             appLock.phaseChanged(phase)
-            if phase == .active { Task { await store.refreshNotificationPrivacy() } }
+            if phase == .active { Task { await store.refreshNotificationPrivacy(); await birthdays.refresh(people: store.people, names: store.includeNamesInReminders) } }
         }
         .onChange(of: appLock.enabled) { _, _ in appLock.phaseChanged(phase) }
         #if os(macOS)

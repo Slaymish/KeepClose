@@ -10,7 +10,7 @@ final class ConnectionContextTests: XCTestCase {
         // A recorded contact 20 days ago leaves the 14-day rhythm ready; recording today does not.
         var person = Person(name: "Example person", rhythmDays: 14, createdAt: now.addingTimeInterval(-60 * 86400))
         person.intention = intention
-        person.recordContact(at: ready ? now.addingTimeInterval(-20 * 86400) : now)
+        person.recordContact(at: ready ? now.addingTimeInterval(-20 * 86400) : now, kind: .conversation)
         return person
     }
 
@@ -120,7 +120,7 @@ final class ConnectionContextTests: XCTestCase {
         XCTAssertEqual(person.visibleIdeas.count, 1)
     }
 
-    func testRepeatedOutreachRoomIsBasedOnConsecutiveLoggedAttemptsOnly() {
+    func testOpenOutreachStaysQuietUntilARecordedResponse() {
         var person = person(ready: true)
         person.recordContact(at: now.addingTimeInterval(-40 * 86400), kind: .outreach)
         person.recordContact(at: now.addingTimeInterval(-30 * 86400), kind: .incoming)
@@ -129,8 +129,9 @@ final class ConnectionContextTests: XCTestCase {
         person.recordContact(at: now.addingTimeInterval(-20 * 86400), kind: .outreach)
         person.recordContact(at: now.addingTimeInterval(-10 * 86400), kind: .outreach)
         let room = person.suggestion(at: now, calendar: calendar)
-        XCTAssertEqual(room.action, .giveSpace)
-        XCTAssertTrue(room.reason.contains("based only on what you recorded"))
+        XCTAssertEqual(room.action, .later)
+        XCTAssertFalse(room.ready)
+        XCTAssertEqual(room.title, "You've reached out")
     }
 
     func testSettingAGenericSuggestionAsideIsRespected() {

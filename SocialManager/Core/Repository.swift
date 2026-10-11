@@ -43,7 +43,9 @@ public struct RelationshipRepository: Sendable {
         #if DEBUG
         // Documentation previews use fictional data in a separate temporary store.
         if CommandLine.arguments.contains("--demo") {
-            return FileManager.default.temporaryDirectory.appendingPathComponent("KeepCloseDocumentationDemo", isDirectory: true)
+            let name = CommandLine.arguments.contains("--ux-preview") ? "KeepCloseUXPreview" : "KeepCloseDocumentationDemo"
+            let variant = CommandLine.arguments.contains("--demo-empty") ? "Empty" : CommandLine.arguments.contains("--demo-large") ? "Large" : ""
+            return FileManager.default.temporaryDirectory.appendingPathComponent(name + variant, isDirectory: true)
         }
         #endif
         // Retain the original unsandboxed Mac app/CLI path and iOS sandbox path.

@@ -30,8 +30,12 @@ Use `--types 'Friend,Colleague'`, `--contexts 'Work,Online'`, and `--intention g
 `--notes` (or legacy `--context`) stores personal nuance; `--contexts` is the shared-context category list.
 `--days` sets a custom rhythm. `--rhythm auto` restores editable category/intention defaults.
 Log contact with `--kind outreach|incoming|conversation|reply|ambient`; conversation accepts
-`--initiator me|them|mutual|unknown`. Incoming prompts a reply; reply/catch-up closes earlier incoming.
-`resolve ID --entry ENTRY_UUID` means no reply is needed; it does not log contact.
+`--initiator me|them|mutual|unknown`. Incoming offers an optional reply; reply/catch-up closes earlier incoming. One recorded outgoing message suppresses proactive ideas until a later recorded response/shared time or explicit `resolve` of that outreach. Never speculate about silence.
+`resolve ID --entry ENTRY_UUID` leaves an incoming or outgoing message here; it does not log contact.
+`log --idea IDEA_UUID` links an event to an opportunity; outreach is not doing the activity.
+`plan ID --title TEXT --at ISO8601 [--idea IDEA_UUID]` records an agreed future plan, not contact.
+`plan ID --complete PLAN_UUID [--at ISO8601]` logs actual shared time; `--cancel PLAN_UUID` sets it aside.
+`unlog ID --entry ENTRY_UUID` removes a mistaken event. Plans and open invitations suppress proactive ideas.
 Ambient contact does not reset the meaningful-contact rhythm. Space suppresses proactive suggestions,
 while pause suppresses all. Historical logs without directional data do not prove unanswered messages.
 
@@ -121,3 +125,15 @@ Checkpoint files are private, beside relationships.json, never in the repository
 without a checkpoint, current records are authoritative but historical edits cannot be reconstructed.
 Memory updates happen through the receiving agent's available tools; don't claim unavailable access.
 Always use existing UUIDs for returned updates, so corrected names remain the same person.
+
+## Birthdays / Contacts / merges
+
+`update ID --birthday MM-DD|YYYY-MM-DD|none` records or clears a birthday.
+`--birthday-reminder on|off` and `--gift-reminder automatic|on|off` configure per-person reminders.
+Native birthday notification permission/time/enablement are per device. Give Space/Pause suppress them.
+Native Contacts importing/following is read-only and user-selected; manually edited fields stay protected.
+`merge SOURCE --into DEST` previews the combined person; `--yes` applies with a private backup.
+`--birthday source|destination` resolves conflicting birthdays. Merge retains histories, links, context,
+set-aside ideas and stronger boundaries. Merged UUID aliases resolve future existing-ID AI imports.
+Do not access real Contacts or enable device sync in fictional `--demo` UI tests.
+See docs/BIRTHDAYS_CONTACTS.md.

@@ -76,6 +76,20 @@ func apply(_ options: Options, to person: inout Person) throws {
     }
     if let value = options.values["context"] { person.context = value }
     if let value = options.values["address"] { person.address = value.trimmingCharacters(in: .whitespacesAndNewlines) }
+    if let value = options.values["birthday"] {
+        if value == "none" { person.birthday = nil }
+        else {
+            let parts = value.split(separator: "-", omittingEmptySubsequences: false).compactMap { Int($0) }
+            guard parts.count == value.split(separator: "-", omittingEmptySubsequences: false).count, [2, 3].contains(parts.count) else { throw CLIError(message: "Birthday must be MM-DD, YYYY-MM-DD or none.") }
+            person.birthday = try Birthday(month: parts[parts.count - 2], day: parts[parts.count - 1], year: parts.count == 3 ? parts[0] : nil)
+        }
+    }
+    if let value = options.values["birthday-reminder"] {
+        guard ["on", "off"].contains(value) else { throw CLIError(message: "Birthday reminder must be on or off.") }; person.birthdayReminder = value == "on"
+    }
+    if let value = options.values["gift-reminder"] {
+        guard let reminder = GiftReminder(rawValue: value) else { throw CLIError(message: "Gift reminder must be automatic, on or off.") }; person.giftReminder = reminder
+    }
     if options.values["days"] != nil {
         let days = try options.int("days", fallback: 14)
         guard (1...365).contains(days) else { throw CLIError(message: "--days must be between 1 and 365.") }; person.rhythmDays = days; person.rhythmIsCustom = true
@@ -242,8 +256,13 @@ keepclose suggest ID                   Person and explained next action
 keepclose suggestions                  All ready actions, with reasons
 keepclose add --name NAME [fields]      Add a person
 keepclose update ID [fields]            Change only supplied fields
-keepclose log ID [--kind KIND] [--initiator WHO] [--at ISO8601] [--note TEXT]
-keepclose resolve ID --entry ENTRY_UUID Mark an incoming message as needing no reply
+keepclose log ID [--kind KIND] [--initiator WHO] [--at ISO8601] [--note TEXT] [--idea IDEA_UUID]
+keepclose resolve ID --entry ENTRY_UUID Leave an incoming or outgoing message here
+keepclose unlog ID --entry ENTRY_UUID   Remove a mistaken contact log
+keepclose plan ID --title TEXT --at ISO8601 [--idea IDEA_UUID]
+keepclose plan ID --complete PLAN_UUID [--at ISO8601]
+keepclose plan ID --cancel PLAN_UUID
+keepclose merge SOURCE --into DEST [--birthday source|destination] [--yes] Preview or apply a backed-up merge
 keepclose context ID                    Recorded context and current ways to connect
 keepclose idea ID --add --activity TEXT [--kind KIND] [--reminder TEXT] [--reason TEXT]
                                         [--timing TIMING] [--cadence DAYS] [--occasions 'a,b']
@@ -276,7 +295,8 @@ keepclose path                         Shared data directory
 
 Fields: --name, --types 'Friend,Colleague', --contexts 'Work,Online',
         --intention (grow/maintain/space/unsure), --rhythm (auto/custom), --days (1–365),
-        --method (message/call/email/in-person), --address, --notes.
+        --method (message/call/email/in-person), --address, --notes,
+        --birthday MM-DD|YYYY-MM-DD|none, --birthday-reminder on|off, --gift-reminder automatic|on|off.
 Idea kinds: sharedActivity, async, call, ritual, visit, gesture, conversation.
 Idea timing: anytime, weekday, evening, weekend, freeTime.
 Source (where context came from): me, them, memory, agent, unsure.
@@ -298,8 +318,19 @@ do {
     if command == "help" || command == "--help" { print(help); exit(0) }
     let options = try Options(Array(args.dropFirst()))
     let repository = RelationshipRepository(directory: options.values["data-dir"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? RelationshipRepository.defaultDirectory)
-    let fields = ["name", "circle", "types", "contexts", "intention", "rhythm", "days", "method", "address", "context", "notes"]
+    let fields = ["name", "circle", "types", "contexts", "intention", "rhythm", "days", "method", "address", "context", "notes", "birthday", "birthday-reminder", "gift-reminder"]
     switch command {
+    case "merge":
+        try options.allow(["into", "yes", "birthday"], positional: 1)
+        guard let destination = options.values["into"] else { throw CLIError(message: "Use merge SOURCE --into DEST. Omit --yes to preview first.") }
+        let people = try repository.people()
+        let source = people[try index(identifier(options.positional[0]), in: people)]
+        let target = people[try index(identifier(destination), in: people)]
+        let birthdayChoice = options.values["birthday"] ?? "destination"
+        guard ["source", "destination"].contains(birthdayChoice) else { throw CLIError(message: "Birthday choice must be source or destination.") }
+        let plan = try PeopleMerge(keeping: target, merging: source, useSourceBirthday: birthdayChoice == "source")
+        if options.flag("yes") { try repository.merge(plan) }
+        try emit(plan.combined)
     case "import-prompt":
         try options.allow(["source"], positional: 0)
         guard let source = options.values["source"].flatMap(ImportProvider.init(rawValue:)) else { throw CLIError(message: "Use --source chatgpt or claude.") }
@@ -349,8 +380,8 @@ do {
         guard options.values["name"] != nil else { throw CLIError(message: "add requires --name.") }
         var person = Person(name: ""); try apply(options, to: &person)
         try repository.modifyPeople { $0.append(person) }; try emit(person)
-    case "update", "log", "snooze", "pause", "resume", "delete", "resolve":
-        let allowed = command == "update" ? fields : command == "log" ? ["at", "note", "kind", "initiator"] : command == "resolve" ? ["entry"] : command == "snooze" ? ["days"] : command == "delete" ? ["yes"] : []
+    case "update", "log", "snooze", "pause", "resume", "delete", "resolve", "unlog", "plan":
+        let allowed = command == "update" ? fields : command == "log" ? ["at", "note", "kind", "initiator", "idea"] : ["resolve", "unlog"].contains(command) ? ["entry"] : command == "plan" ? ["title", "at", "idea", "complete", "cancel"] : command == "snooze" ? ["days"] : command == "delete" ? ["yes"] : []
         try options.allow(allowed, positional: 1)
         let id = try identifier(options.positional[0])
         let result = try repository.modifyPeople { people -> Person in
@@ -367,12 +398,34 @@ do {
                 if let value = options.values["initiator"] {
                     guard kind == .conversation, let parsed = Initiator(rawValue: value) else { throw CLIError(message: "--initiator is me/them/mutual/unknown and only applies to conversation logs.") }; initiator = parsed
                 }
-                people[i].recordContact(at: at, note: options.values["note"] ?? "", kind: kind, initiator: initiator)
+                let ideaId = try options.values["idea"].map(identifier)
+                if let ideaId { guard people[i].ideas.contains(where: { $0.id == ideaId }) || people[i].rituals.contains(where: { $0.id == ideaId }) else { throw CLIError(message: "Idea not found for this person.") } }
+                people[i].recordContact(at: at, note: options.values["note"] ?? "", kind: kind, initiator: initiator, ideaId: ideaId)
             case "resolve":
                 guard let value = options.values["entry"] else { throw CLIError(message: "resolve requires --entry ENTRY_UUID.") }
                 let entry = try identifier(value)
-                guard people[i].contacts.contains(where: { $0.id == entry && $0.kind == .incoming }) else { throw CLIError(message: "Incoming entry not found for this person.") }
-                people[i].resolveIncoming(entry)
+                guard let contact = people[i].contacts.first(where: { $0.id == entry && [.incoming, .outreach].contains($0.kind) }) else { throw CLIError(message: "Message entry not found for this person.") }
+                if contact.kind == .incoming { people[i].resolveIncoming(entry) } else { people[i].resolveOutreach(entry) }
+            case "unlog":
+                guard let value = options.values["entry"], people[i].removeContact(try identifier(value)) else { throw CLIError(message: "Contact entry not found for this person.") }
+            case "plan":
+                if let value = options.values["complete"] {
+                    guard options.values["cancel"] == nil, options.values["title"] == nil, options.values["idea"] == nil else { throw CLIError(message: "Use --complete with only an optional --at.") }
+                    let at = try options.values["at"].map(date) ?? .now
+                    guard people[i].finishPlan(try identifier(value), at: at) != nil else { throw CLIError(message: "Active plan not found or contact date is in the future.") }
+                } else if let value = options.values["cancel"] {
+                    guard options.values["title"] == nil, options.values["at"] == nil, options.values["idea"] == nil else { throw CLIError(message: "Use --cancel on its own.") }
+                    let planId = try identifier(value)
+                    guard people[i].activePlans.contains(where: { $0.id == planId }) else { throw CLIError(message: "Active plan not found.") }
+                    people[i].cancelPlan(planId)
+                } else {
+                    guard let title = options.values["title"], let value = options.values["at"] else { throw CLIError(message: "A plan needs --title and --at.") }
+                    let at = try date(value)
+                    guard at >= .now else { throw CLIError(message: "New plans need a future date; log past shared time as conversation.") }
+                    let ideaId = try options.values["idea"].map(identifier)
+                    if let ideaId { guard people[i].ideas.contains(where: { $0.id == ideaId }) || people[i].rituals.contains(where: { $0.id == ideaId }) else { throw CLIError(message: "Idea not found for this person.") } }
+                    guard people[i].addPlan(title: title, date: at, ideaId: ideaId) != nil else { throw CLIError(message: "A plan needs a title.") }
+                }
             case "snooze":
                 guard options.values["days"] != nil else { throw CLIError(message: "snooze requires --days.") }
                 let days = try options.int("days", fallback: 1)

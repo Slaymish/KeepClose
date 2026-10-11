@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """CLI integration checks; writes only to a temporary dataset."""
 import concurrent.futures
+import datetime
 import json
 import pathlib
 import subprocess
@@ -22,6 +23,23 @@ with tempfile.TemporaryDirectory(prefix="keepclose-test-") as directory:
     uid = person["id"]
     run("update", uid, "--circle", "Family", "--method", "email", "--address", "example@example.com")
     assert run("show", uid)["context"] == "Ask about the garden"
+    run("update", uid, "--birthday", "02-29", "--gift-reminder", "off")
+    assert run("show", uid)["birthday"] == {"month": 2, "day": 29}
+    run("update", uid, "--birthday", "2001-02-29", ok=False)
+    assert run("show", uid)["birthday"]["day"] == 29
+    duplicate = run("add", "--name", "Duplicate example", "--birthday", "1992-03-04", "--notes", "Second note")
+    duplicate_id = duplicate["id"]
+    run("log", duplicate_id, "--kind", "conversation", "--note", "Shared dinner")
+    preview = run("merge", duplicate_id, "--into", uid, "--birthday", "source")
+    assert preview["birthday"] == {"month": 3, "day": 4, "year": 1992}
+    assert len(run("list")) == 2, "Preview must not change data"
+    merged = run("merge", duplicate_id, "--into", uid, "--birthday", "source", "--yes")
+    assert merged["id"] == uid and duplicate_id in merged["mergedPersonIDs"]
+    assert merged["contacts"][0]["note"] == "Shared dinner" and "Second note" in merged["context"]
+    assert len(run("list")) == 1
+    assert list(pathlib.Path(directory, "backups").glob("before-merge-*.json"))
+    run("update", uid, "--birthday", "none")
+    assert "birthday" not in run("show", uid)
     run("snooze", uid, "--days", "3")
     assert run("due") == []
     run("pause", uid)
@@ -115,6 +133,7 @@ with tempfile.TemporaryDirectory(prefix="keepclose-test-") as directory:
     assert run("context", uid)["opportunities"] == []
     run("idea", uid, "--restore", "--idea", idea["id"])
     assert not run("show", uid)["connection"]["ideas"][0]["dismissed"]
+    assert any(item["ideaId"] == idea["id"] for item in run("context", uid)["opportunities"]), "Explicit restoration makes the idea available again."
     first_memory = run("memory", uid, "--add", "--text", "A remembered evening from a shared trip", "--source", "agent", "--confidence", "suggested")
     assert first_memory["action"] == "add"
     run("memory", uid, "--add", "--text", "A completely different note about a phone call")
@@ -141,6 +160,34 @@ with tempfile.TemporaryDirectory(prefix="keepclose-test-") as directory:
     run("idea", uid, "--add", "--activity", "a walk", "--kind", "invalid", ok=False)
     run("memory", uid, "--add", "--text", "x", "--source", "psychic", ok=False)
     run("pass", uid, "--idea", "not-a-uuid", ok=False)
+
+    # Connection lifecycle: an invitation is not the activity, and future plans are not logs.
+    lifecycle_idea = run("idea", uid, "--add", "--activity", "an evening of board games")
+    idea = lifecycle_idea["ideas"][0]
+    before_contacts = len(run("show", uid)["contacts"])
+    sent = run("log", uid, "--kind", "outreach", "--idea", idea["id"], "--note", "Invitation sent")
+    sent_id = sent["contacts"][-1]["id"]
+    assert sent["contacts"][-1]["ideaId"] == idea["id"]
+    assert run("context", uid)["opportunities"] == []
+    assert not run("suggest", uid)["suggestion"]["ready"]
+    run("resolve", uid, "--entry", sent_id)
+    assert len(run("show", uid)["contacts"]) == before_contacts + 1
+    run("unlog", uid, "--entry", sent_id)
+    future = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=5)).isoformat(timespec="seconds")
+    planned = run("plan", uid, "--title", "A game evening", "--at", future, "--idea", idea["id"])
+    plan_id = planned["plans"][-1]["id"]
+    assert len(planned["contacts"]) == before_contacts
+    assert run("context", uid)["opportunities"] == []
+    run("plan", uid, "--complete", plan_id, "--at", future, ok=False)
+    run("plan", uid, "--cancel", plan_id, "--title", "Invalid", ok=False)
+    finished = run("plan", uid, "--complete", plan_id)
+    assert finished["contacts"][-1]["kind"] == "conversation"
+    assert finished["plans"][-1]["status"] == "happened"
+    run("unlog", uid, "--entry", finished["contacts"][-1]["id"])
+    assert run("show", uid)["plans"][-1]["status"] == "planned"
+    run("plan", uid, "--cancel", plan_id)
+    assert run("show", uid)["plans"][-1]["status"] == "cancelled"
+    run("idea", uid, "--remove", "--idea", idea["id"])
 
     # Version 2 imports carry contextual ideas, respect dismissals and never duplicate.
     v2_file = pathlib.Path(directory) / "agent-import-v2.json"
