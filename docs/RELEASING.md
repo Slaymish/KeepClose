@@ -34,6 +34,31 @@ The app reads `https://github.com/slaymish/KeepClose/releases/latest/download/ap
 
 Sparkle is macOS-only. Release builds support scheduled checks, optional automatic installation through Sparkle's UI, and **Keep Close → Check for Updates…**. Debug builds don't start the updater. iPhone/iPad distribution and updates still require Xcode or a separately configured App Store/TestFlight process; this workflow does not upload to Apple.
 
+## Signing without a Developer ID certificate
+
+A Developer ID Application certificate and notarization credentials require paid Apple Developer
+Program membership. Until those exist, two helper scripts cover local use:
+
+```sh
+scripts/create-selfsigned-identity.sh          # once: a trusted, self-signed code-signing identity
+scripts/build-selfsigned.sh                    # signs and packages app + CLI archives
+scripts/build-selfsigned.sh 0.1.0 --publish    # also tags, pushes and creates the GitHub release
+```
+
+The result is signed but **not notarized**. Other Macs block the first launch until the user approves it
+in System Settings → Privacy & Security, or clears the quarantine flag on the CLI with
+`xattr -d com.apple.quarantine keepclose`. Releases published this way carry no Sparkle appcast, so
+existing installs do not auto-update from them; a later tagged Release workflow release takes over.
+
+`scripts/release-secrets.sh <setup|check|load|tag>` loads the six Apple secrets into the repository when
+the credentials do exist, and can tag the prepared release afterwards. `scripts/build-selfsigned.sh`
+prefers a Developer ID identity when one is present, so the same command produces a better-signed result
+once the certificate is installed.
+
+The Apple Development certificate in this checkout's keychain is revoked, which is why
+`scripts/create-selfsigned-identity.sh` exists: `codesign` rejects a revoked identity, so an expired or
+revoked Apple certificate cannot be used even for local builds.
+
 ## Local build
 
 `scripts/build-release.sh VERSION BUILD` performs the same packaging when the signing identity and `NOTARY_KEY_FILE`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` are provided in the environment. Output is ignored under `.build-release/dist`. It does not publish or tag by itself.

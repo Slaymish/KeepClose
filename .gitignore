@@ -9,3 +9,10 @@ __pycache__/
 *.p12
 *.p8
 *.key
+
+# Local release credential material; never commit.
+.keepclose-release/
+
+# Local release artifacts and staging.
+.build-release/
+release-*/
