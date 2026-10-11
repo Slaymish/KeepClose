@@ -6,12 +6,22 @@ import AppKit
 import UIKit
 #endif
 
+/// `LAContext` isn't `Sendable`. Keep Close creates, evaluates and invalidates it from the main
+/// actor only, so this unchecked conformance records the single owner the compiler can't infer.
+/// Evaluation runs through a nonisolated method so the context is never sent across isolation.
+private struct AuthenticationContext: @unchecked Sendable {
+    let value: LAContext
+    func evaluate(reason: String) async throws -> Bool {
+        try await value.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+    }
+}
+
 @MainActor @Observable final class AppLockController {
     private var session: AppLockSession
     var authenticating = false
     var message: String?
     var obscured = false
-    private var context: LAContext?
+    private var context: AuthenticationContext?
     private var activeAttempt: UInt64?
     private let repository = RelationshipRepository()
     init() {
@@ -35,9 +45,9 @@ import UIKit
     func authenticate(_ intent: AppLockSession.Intent) async {
         guard !authenticating else { return }
         message = nil
-        let context = LAContext()
+        let context = AuthenticationContext(value: LAContext())
         var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+        guard context.value.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             message = error?.localizedDescription ?? "Set a device passcode or login password before enabling app lock."
             return
         }
@@ -53,7 +63,7 @@ import UIKit
         case .unlock: reason = "Unlock your relationships in Keep Close."
         }
         do {
-            let granted = try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+            let granted = try await context.evaluate(reason: reason)
             guard activeAttempt == attempt else { return }
             var authenticated = session
             if granted && authenticated.authenticationSucceeded(intent, attempt: attempt) {
@@ -67,7 +77,7 @@ import UIKit
         }
     }
     func lock() {
-        context?.invalidate(); context = nil; activeAttempt = nil; authenticating = false
+        context?.value.invalidate(); context = nil; activeAttempt = nil; authenticating = false
         session.lock(); message = nil
     }
     func phaseChanged(_ phase: ScenePhase) {

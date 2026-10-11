@@ -1,5 +1,8 @@
 import SwiftUI
-import UserNotifications
+// UserNotifications predates Swift concurrency and returns non-Sendable objects
+// (UNNotificationSettings, UNNotificationRequest) from its async APIs. Keep Close only reads them
+// here on the main actor, so those Sendable diagnostics are warnings rather than build errors.
+@preconcurrency import UserNotifications
 #if os(macOS)
 import AppKit
 #else
