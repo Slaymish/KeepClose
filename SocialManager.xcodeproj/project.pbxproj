@@ -1,0 +1,405 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3AA5F53A445919031F8D8651 /* AppLockController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDCEB556D5686FF8A4E831A /* AppLockController.swift */; };
+		6B425481A5D244529C2FB3DD /* AppPrivacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2232C5361D0CB03503323925 /* AppPrivacy.swift */; };
+		749BC5C15E54BA7C11ACA044 /* AppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4753706A57E1913B056C5070 /* AppView.swift */; };
+		7CB34E2B1259D299775F7733 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = E538E62CF796D6E313AF737F /* Sparkle */; };
+		83BBD1A3FE7B3115EB3F4F7A /* AgentImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9BDF65DCBCC51159F178448 /* AgentImportView.swift */; };
+		866FADE59FC5626B8B729DD2 /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F828510B39C56F1AFBFE699 /* Person.swift */; };
+		9A191D1B50718A5528DACC45 /* Repository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CF97B9C5A9B54DD0D6E0E4 /* Repository.swift */; };
+		A3588F4BD926BD248D755D38 /* AgentImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4426ECAED86B8FC3E6693B95 /* AgentImport.swift */; };
+		BB3A36099CA5FF0000D12A5D /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622EEE96C957D14213AEC1AC /* Store.swift */; };
+		F43A8EB2EDE350611E5F9680 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9965A5B693388ECDCB24FB18 /* AppUpdater.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2232C5361D0CB03503323925 /* AppPrivacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPrivacy.swift; sourceTree = "<group>"; };
+		3CDCEB556D5686FF8A4E831A /* AppLockController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockController.swift; sourceTree = "<group>"; };
+		3F828510B39C56F1AFBFE699 /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
+		4426ECAED86B8FC3E6693B95 /* AgentImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentImport.swift; sourceTree = "<group>"; };
+		4753706A57E1913B056C5070 /* AppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppView.swift; sourceTree = "<group>"; };
+		622EEE96C957D14213AEC1AC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
+		7C5274067776E1845E5A620C /* SocialManager.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SocialManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9965A5B693388ECDCB24FB18 /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
+		D8CF97B9C5A9B54DD0D6E0E4 /* Repository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repository.swift; sourceTree = "<group>"; };
+		D9BDF65DCBCC51159F178448 /* AgentImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentImportView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B6E4A4A6D245A851C2CC912C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7CB34E2B1259D299775F7733 /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		384A61ACE9A2DCBE4F1C9025 /* SocialManager */ = {
+			isa = PBXGroup;
+			children = (
+				3CDCEB556D5686FF8A4E831A /* AppLockController.swift */,
+				9965A5B693388ECDCB24FB18 /* AppUpdater.swift */,
+				622EEE96C957D14213AEC1AC /* Store.swift */,
+				4C9F01FD3E81B985E5B96804 /* Core */,
+				979779F15DAD4410F0A4CF1C /* Views */,
+			);
+			path = SocialManager;
+			sourceTree = "<group>";
+		};
+		4C9F01FD3E81B985E5B96804 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				4426ECAED86B8FC3E6693B95 /* AgentImport.swift */,
+				2232C5361D0CB03503323925 /* AppPrivacy.swift */,
+				3F828510B39C56F1AFBFE699 /* Person.swift */,
+				D8CF97B9C5A9B54DD0D6E0E4 /* Repository.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		979779F15DAD4410F0A4CF1C /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				D9BDF65DCBCC51159F178448 /* AgentImportView.swift */,
+				4753706A57E1913B056C5070 /* AppView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		BA544F30D2A78470D4673EB5 = {
+			isa = PBXGroup;
+			children = (
+				384A61ACE9A2DCBE4F1C9025 /* SocialManager */,
+				BC00E1A0DA5AB557B04744A4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BC00E1A0DA5AB557B04744A4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7C5274067776E1845E5A620C /* SocialManager.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8F562FC398CA06131A06AC80 /* SocialManager */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 103B7769455C30B633512614 /* Build configuration list for PBXNativeTarget "SocialManager" */;
+			buildPhases = (
+				09646466D7A48CA6B63D30EC /* Sources */,
+				B6E4A4A6D245A851C2CC912C /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SocialManager;
+			packageProductDependencies = (
+				E538E62CF796D6E313AF737F /* Sparkle */,
+			);
+			productName = SocialManager;
+			productReference = 7C5274067776E1845E5A620C /* SocialManager.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		25DC846FB32D7BFB3BD22087 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					8F562FC398CA06131A06AC80 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = B4B02B3E36BC93BCD4DA88AC /* Build configuration list for PBXProject "SocialManager" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = BA544F30D2A78470D4673EB5;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E4CC4D2C965274DA5D689FEB /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BC00E1A0DA5AB557B04744A4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8F562FC398CA06131A06AC80 /* SocialManager */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		09646466D7A48CA6B63D30EC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A3588F4BD926BD248D755D38 /* AgentImport.swift in Sources */,
+				83BBD1A3FE7B3115EB3F4F7A /* AgentImportView.swift in Sources */,
+				3AA5F53A445919031F8D8651 /* AppLockController.swift in Sources */,
+				6B425481A5D244529C2FB3DD /* AppPrivacy.swift in Sources */,
+				F43A8EB2EDE350611E5F9680 /* AppUpdater.swift in Sources */,
+				749BC5C15E54BA7C11ACA044 /* AppView.swift in Sources */,
+				866FADE59FC5626B8B729DD2 /* Person.swift in Sources */,
+				9A191D1B50718A5528DACC45 /* Repository.swift in Sources */,
+				BB3A36099CA5FF0000D12A5D /* Store.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		023AA5403675A1FACF24FEB8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Keep Close";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your private relationships and notes in Keep Close.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		30364998EAD7E7C878B0FEC5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Keep Close";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your private relationships and notes in Keep Close.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		43CFB18EF7EC9EF9F0580617 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 2;
+				ENABLE_APP_SANDBOX = YES;
+				"ENABLE_APP_SANDBOX[sdk=macosx*]" = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				"INFOPLIST_KEY_SUAllowsAutomaticUpdates[sdk=macosx*]" = YES;
+				"INFOPLIST_KEY_SUEnableAutomaticChecks[sdk=macosx*]" = YES;
+				"INFOPLIST_KEY_SUFeedURL[sdk=macosx*]" = "https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml";
+				"INFOPLIST_KEY_SUPublicEDKey[sdk=macosx*]" = "GrB8p71JkrPcpzhFa5rdgDycN2MtTGIgB3wlj70h3Vo=";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "$(inherited) @executable_path/../Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.keepclose.KeepClose;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F29C301A75823BDF54293F1C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 2;
+				ENABLE_APP_SANDBOX = YES;
+				"ENABLE_APP_SANDBOX[sdk=macosx*]" = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				"INFOPLIST_KEY_SUAllowsAutomaticUpdates[sdk=macosx*]" = YES;
+				"INFOPLIST_KEY_SUEnableAutomaticChecks[sdk=macosx*]" = YES;
+				"INFOPLIST_KEY_SUFeedURL[sdk=macosx*]" = "https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml";
+				"INFOPLIST_KEY_SUPublicEDKey[sdk=macosx*]" = "GrB8p71JkrPcpzhFa5rdgDycN2MtTGIgB3wlj70h3Vo=";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "$(inherited) @executable_path/../Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.keepclose.KeepClose;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		103B7769455C30B633512614 /* Build configuration list for PBXNativeTarget "SocialManager" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F29C301A75823BDF54293F1C /* Debug */,
+				43CFB18EF7EC9EF9F0580617 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B4B02B3E36BC93BCD4DA88AC /* Build configuration list for PBXProject "SocialManager" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				30364998EAD7E7C878B0FEC5 /* Debug */,
+				023AA5403675A1FACF24FEB8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E4CC4D2C965274DA5D689FEB /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E538E62CF796D6E313AF737F /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E4CC4D2C965274DA5D689FEB /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 25DC846FB32D7BFB3BD22087 /* Project object */;
+}

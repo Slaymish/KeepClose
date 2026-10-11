@@ -1,0 +1,43 @@
+name: SocialManager
+options:
+  bundleIdPrefix: app.keepclose
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGN_STYLE: Automatic
+    INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.lifestyle
+    INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    INFOPLIST_KEY_CFBundleDisplayName: Keep Close
+    INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock your private relationships and notes in Keep Close.
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
+targets:
+  SocialManager:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    deploymentTarget:
+      iOS: '17.0'
+      macOS: '14.0'
+    sources: [SocialManager]
+    dependencies:
+      - package: Sparkle
+        destinationFilters: [macOS]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.keepclose.KeepClose
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        MARKETING_VERSION: '0.1.0'
+        CURRENT_PROJECT_VERSION: 2
+        INFOPLIST_KEY_SUPublicEDKey[sdk=macosx*]: GrB8p71JkrPcpzhFa5rdgDycN2MtTGIgB3wlj70h3Vo=
+        INFOPLIST_KEY_SUFeedURL[sdk=macosx*]: https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml
+        INFOPLIST_KEY_SUEnableAutomaticChecks[sdk=macosx*]: YES
+        INFOPLIST_KEY_SUAllowsAutomaticUpdates[sdk=macosx*]: YES
+        ENABLE_APP_SANDBOX[sdk=macosx*]: NO
+        LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]: "$(inherited) @executable_path/../Frameworks"
+        SUPPORTS_MACCATALYST: NO
+        TARGETED_DEVICE_FAMILY: '1,2'

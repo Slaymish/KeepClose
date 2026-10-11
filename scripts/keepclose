@@ -1,0 +1,7 @@
+#!/bin/zsh
+set -euo pipefail
+project_root="${0:A:h:h}"
+cd "$project_root"
+# SwiftPM builds incrementally and prints build diagnostics on stderr.
+swift build --product keepclose >&2
+exec "$project_root/.build/debug/keepclose" "$@"

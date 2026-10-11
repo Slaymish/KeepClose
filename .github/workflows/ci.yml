@@ -1,0 +1,25 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Test core and agent CLI
+        run: |
+          swift test
+          python3 scripts/test-cli.py
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build macOS
+        run: xcodebuild -project SocialManager.xcodeproj -scheme SocialManager -destination 'platform=macOS' -derivedDataPath .build-ci-mac CODE_SIGNING_ALLOWED=NO build
+      - name: Build iOS simulator
+        run: xcodebuild -project SocialManager.xcodeproj -scheme SocialManager -destination 'generic/platform=iOS Simulator' -derivedDataPath .build-ci-ios CODE_SIGNING_ALLOWED=NO build
