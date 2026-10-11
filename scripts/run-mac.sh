@@ -15,5 +15,5 @@ xcodebuild -project SocialManager.xcodeproj -scheme SocialManager -destination '
 app_path="$project_root/.build-xcode/Build/Products/Debug/SocialManager.app"
 python3 scripts/sign-bundle.py "$app_path" "$identity"
 # Build the CLI alongside the app. The original Mac data stays in place.
-swift build --product keepclose
+swift build --product keepclose --disable-sandbox
 open "$app_path"

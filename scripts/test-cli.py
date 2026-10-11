@@ -7,7 +7,8 @@ import subprocess
 import tempfile
 
 root = pathlib.Path(__file__).resolve().parent.parent
-subprocess.run(["swift", "build", "--product", "keepclose"], cwd=root, check=True)
+# --disable-sandbox lets SwiftPM run on hosts where a nested sandbox is unavailable.
+subprocess.run(["swift", "build", "--product", "keepclose", "--disable-sandbox"], cwd=root, check=True)
 binary = str(root / ".build/debug/keepclose")
 with tempfile.TemporaryDirectory(prefix="keepclose-test-") as directory:
     def run(*args, ok=True):
@@ -86,6 +87,97 @@ with tempfile.TemporaryDirectory(prefix="keepclose-test-") as directory:
     assert stored.read_bytes() == before
     run("import", str(import_file), "--apply", "--dry-run", ok=False)
     assert "--apply" in run("import-prompt", "--source", "chatgpt")["prompt"]
+    assert '"version": 2' in run("import-prompt", "--source", "chatgpt")["prompt"]
+
+    # Recorded context: ideas, interests, memories and rituals, with provenance intact.
+    # Offering ideas is separate from giving space: switch back to maintain first.
+    run("update", uid, "--intention", "maintain")
+    run("interest", uid, "--add", "--name", "Board games", "--detail", "Owns a stack")
+    run("memory", uid, "--add", "--text", "An evening we both enjoyed")
+    run("ritual", uid, "--add", "--title", "Thursday game night", "--days", "7")
+    added = run("idea", uid, "--add", "--activity", "an evening of board games", "--kind", "sharedActivity", "--timing", "weekend", "--reason", "You both enjoy board games")
+    assert added["action"] == "add"
+    idea = added["ideas"][0]
+    assert idea["sources"] == ["me"] and idea["confidence"] == "known"
+    context = run("context", uid)
+    assert len(context["person"]["connection"]["ideas"]) == 1
+    assert context["person"]["connection"]["interests"][0]["name"] == "Board games"
+    assert any(opportunity["ideaId"] == idea["id"] for opportunity in context["opportunities"])
+    assert run("suggest", uid)["suggestion"]["opportunity"]["activity"] == "an evening of board games"
+    run("idea", uid, "--edit", "--idea", idea["id"], "--reminder", "Board games at mine?", "--cadence", "21")
+    assert run("show", uid)["connection"]["ideas"][0]["reminder"] == "Board games at mine?"
+    run("useful", uid, "--idea", idea["id"])
+    assert run("show", uid)["feedback"][-1]["signal"] == "helpful"
+    run("pass", uid, "--idea", idea["id"])
+    passed = run("show", uid)
+    assert passed["connection"]["ideas"][0]["dismissed"]
+    assert passed["feedback"][-1]["signal"] == "notForMe"
+    assert run("context", uid)["opportunities"] == []
+    run("idea", uid, "--restore", "--idea", idea["id"])
+    assert not run("show", uid)["connection"]["ideas"][0]["dismissed"]
+    first_memory = run("memory", uid, "--add", "--text", "A remembered evening from a shared trip", "--source", "agent", "--confidence", "suggested")
+    assert first_memory["action"] == "add"
+    run("memory", uid, "--add", "--text", "A completely different note about a phone call")
+    memories = run("show", uid)["connection"]["memories"]
+    assert len(memories) == 3, "Distinct memories accumulate; only real duplicates merge."
+    assert sum(1 for memory in memories if memory["confidence"] == "suggested") == 1
+    run("memory", uid, "--edit", "--memory", first_memory["memories"][0]["id"], "--text", "An edited recollection")
+    edited = next(memory for memory in run("show", uid)["connection"]["memories"] if memory["text"] == "An edited recollection")
+    assert edited["sources"] == ["me"] and edited["confidence"] == "known", "A hand edit replaces provenance with the user's own."
+    run("memory", uid, "--forget", "--memory", edited["id"])
+    assert len(run("show", uid)["connection"]["memories"]) == 2
+    interest_id = run("show", uid)["connection"]["interests"][0]["id"]
+    run("interest", uid, "--remove", "--interest", interest_id)
+    assert run("show", uid)["connection"]["interests"] == []
+    ritual_id = run("show", uid)["connection"]["rituals"][0]["id"]
+    run("ritual", uid, "--remove", "--ritual", ritual_id)
+    assert run("show", uid)["connection"]["rituals"] == []
+    run("update", uid, "--intention", "space")
+    assert run("context", uid)["opportunities"] == []
+    run("update", uid, "--intention", "maintain")
+    run("idea", uid, "--dismiss", "--idea", idea["id"])
+    run("idea", uid, "--remove", "--idea", idea["id"])
+    assert run("show", uid)["connection"]["ideas"] == []
+    run("idea", uid, "--add", "--activity", "a walk", "--kind", "invalid", ok=False)
+    run("memory", uid, "--add", "--text", "x", "--source", "psychic", ok=False)
+    run("pass", uid, "--idea", "not-a-uuid", ok=False)
+
+    # Version 2 imports carry contextual ideas, respect dismissals and never duplicate.
+    v2_file = pathlib.Path(directory) / "agent-import-v2.json"
+    remembered = "A remembered evening from a trip we took together"
+    v2_file.write_text(json.dumps({"version": 2, "source": "chatgpt", "people": [{
+        "id": uid, "name": "Test person",
+        "context": {"confidence": "unsure", "source": "memory", "memories": [remembered],
+                    "interests": [{"name": "Board games"}],
+                    "ideas": [{"activity": "an evening of board games", "reason": "You both enjoy them", "source": "memory"}]}
+    }]}))
+    v2_preview = run("import", str(v2_file), "--dry-run")
+    assert v2_preview["newIdeas"] == 1 and v2_preview["changes"][0]["action"] == "merge"
+    assert run("import", str(v2_file), "--apply")["newIdeas"] == 1
+    stored_person = run("show", uid)
+    imported_idea = next(idea for idea in stored_person["connection"]["ideas"] if idea["activity"] == "an evening of board games")
+    assert imported_idea["confidence"] == "unsure", "Imported context is never presented as certain."
+    assert imported_idea["sources"] == ["memory"]
+    imported_memory = next(memory for memory in stored_person["connection"]["memories"] if memory["text"] == remembered)
+    assert imported_memory["confidence"] == "unsure" and imported_memory["sources"] == ["memory"]
+    idea_id = imported_idea["id"]
+    run("pass", uid, "--idea", idea_id)
+    dismissed_again = run("import", str(v2_file), "--dry-run")
+    assert dismissed_again["newIdeas"] == 0
+    assert dismissed_again["changes"][0]["dismissedIdeas"] == ["an evening of board games"]
+    assert run("import", str(v2_file), "--apply")["updated"] == 0
+    assert next(idea for idea in run("show", uid)["connection"]["ideas"] if idea["id"] == idea_id)["dismissed"]
+    # A dismissed idea on a person whose intention the app now holds stays dismissed.
+    assert run("show", uid)["intentionChosen"]
+    assert run("show", uid)["intention"] == "maintain"
+    bad_v2 = pathlib.Path(directory) / "bad-v2.json"
+    bad_v2.write_text(json.dumps({"version": 2, "source": "chatgpt", "people": [{"name": "Bad", "context": {"ideas": [{"activity": "a walk", "photos": []}]}}]}))
+    before = stored.read_bytes()
+    run("import", str(bad_v2), "--apply", ok=False)
+    assert stored.read_bytes() == before
+    third_version = pathlib.Path(directory) / "future.json"
+    third_version.write_text(json.dumps({"version": 3, "source": "chatgpt", "people": []}))
+    run("import", str(third_version), "--apply", ok=False)
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         list(pool.map(lambda i: run("add", "--name", "Concurrent %s" % i), range(30)))
     assert len(run("list")) == 31

@@ -43,6 +43,22 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
         reload()
     }
     var due: [Person] { people.suggestedPeople() }
+    /// Recurring patterns worth keeping, across everyone.
+    var rituals: [ConnectionRitual] { people.flatMap(\.rituals).filter { !$0.dismissed } }
+    /// People who are not asking for anything, but whose recorded context is worth surfacing.
+    /// Ordered by the longest gap: a gentle idea for reconnection, never a nudge or a debt.
+    var quietSuggestions: [Person] {
+        people
+            .filter { person in
+                // Rituals get their own "patterns worth keeping" list, so they are not repeated here.
+                guard !person.paused, person.intention != .space, !person.isDue() else { return false }
+                guard let opportunity = person.bestOpportunity() else { return false }
+                return !opportunity.isRitual
+            }
+            .sorted { ($0.lastContact ?? $0.createdAt) < ($1.lastContact ?? $1.createdAt) }
+            .prefix(3)
+            .map { $0 }
+    }
     func reload() {
         do { people = try repository.people(); lastReadError = nil }
         catch {
@@ -224,19 +240,33 @@ private final class NotificationPresenter: NSObject, UNUserNotificationCenterDel
 
 #if DEBUG
 extension RelationshipStore {
+    /// Fictional data for documentation previews: shows grounded ideas rather than
+    /// day counting. Seeded once; a second launch leaves the demo store untouched.
     private func seedDocumentationDemo() {
         let daysAgo: (Int) -> Date = { Date.now.addingTimeInterval(Double(-$0) * 86400) }
         var alex = Person(name: "Alex Chen", context: "Met through the climbing club. Ask how the new route went.")
-        alex.intention = .grow; alex.contexts = ["Hobby", "Nearby"]
+        alex.chooseIntention(.grow); alex.contexts = ["Hobby", "Nearby"]
+        alex.addInterest("Climbing", detail: "Both climbing the same grade")
+        alex.addIdea(kind: .sharedActivity, activity: "an evening climb followed by dinner", reason: "You both enjoy the Tuesday session", timing: .evening, cadenceDays: 7)
+        alex.addMemory("Coffee after climbing", date: daysAgo(20))
         alex.recordContact(at: daysAgo(20), note: "Coffee after climbing", kind: .conversation, initiator: .mutual)
         var sam = Person(name: "Sam Rivera", context: "An old university friend. We both love films and long walks.")
         sam.contexts = ["Another city"]
+        sam.addInterest("Films", detail: "Always swapping recommendations")
+        sam.addIdea(kind: .call, activity: "a long catch-up call", reason: "You always enjoy these", timing: .weekend)
+        sam.addMemory("The walk along the canal we both enjoyed", date: daysAgo(400))
         sam.recordContact(at: daysAgo(2), note: "Asked how things are going", kind: .incoming)
         var jordan = Person(name: "Jordan Lee", context: "We worked together on a community project. Ask about the garden.")
         jordan.contexts = ["Online"]
+        jordan.addRitual(title: "Thursday game night", note: "A loose standing invitation with the group", days: 7)
+        jordan.addIdea(kind: .async, activity: "a message in the group chat", reason: "That is where you usually talk")
         jordan.recordContact(at: daysAgo(24), note: "Caught up over a call", kind: .conversation, initiator: .them)
-        do { try repository.modifyPeople { $0 = [alex, sam, jordan] } }
-        catch { self.error = error.localizedDescription }
+        do {
+            try repository.modifyPeople { people in
+                guard people.isEmpty else { return }
+                people = [alex, sam, jordan]
+            }
+        } catch { self.error = error.localizedDescription }
     }
 }
 #endif

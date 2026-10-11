@@ -16,6 +16,8 @@ scripts/keepclose due
 scripts/keepclose show PERSON_UUID
 scripts/keepclose update PERSON_UUID --context 'Ask about their move'
 scripts/keepclose log PERSON_UUID --note 'Sent a hello'
+scripts/keepclose context PERSON_UUID
+scripts/keepclose idea PERSON_UUID --add --activity 'a board game evening' --reason 'You both enjoy them'
 scripts/keepclose reminders
 ```
 
@@ -23,6 +25,7 @@ Person IDs are full UUIDs from `list`. Output dates use ISO 8601. Update changes
 Only log contact that actually happened; opening a contact app does not count.
 `due` returns all people with a ready suggestion; Today caps these at three. `suggestions` returns
 ready people with action and reason; `suggest ID` explains any person's current recommendation.
+`context ID` returns one person's recorded context plus the ways of connecting that are ready now.
 Use `--types 'Friend,Colleague'`, `--contexts 'Work,Online'`, and `--intention grow|maintain|space|unsure`.
 `--notes` (or legacy `--context`) stores personal nuance; `--contexts` is the shared-context category list.
 `--days` sets a custom rhythm. `--rhythm auto` restores editable category/intention defaults.
@@ -31,6 +34,17 @@ Log contact with `--kind outreach|incoming|conversation|reply|ambient`; conversa
 `resolve ID --entry ENTRY_UUID` means no reply is needed; it does not log contact.
 Ambient contact does not reset the meaningful-contact rhythm. Space suppresses proactive suggestions,
 while pause suppresses all. Historical logs without directional data do not prove unanswered messages.
+
+Recorded context: `idea ID --add/--edit/--dismiss/--restore/--remove`, `memory ID --add/--edit/--forget`,
+`interest ID --add/--edit/--remove`, `ritual ID --add/--remove`. Use `--source me|them|memory|agent|unsure`
+and `--confidence known|unsure|suggested` to record where something came from and how well it is known;
+`--kind` for ideas is sharedActivity/async/call/ritual/visit/gesture/conversation and `--timing` is
+anytime/weekday/evening/weekend/freeTime. `--cadence DAYS` sets how often an idea may return; `none`
+clears it. `useful ID` records that a suggestion helped; `pass ID [--idea IDEA_UUID]` sets it aside.
+
+Dismissed ideas stay dismissed: imports never revive them, even reworded. Feedback is explicit only —
+never infer anything from a suggestion the user ignored, and never present an agent's idea as a fact.
+Imported context defaults to `suggested` confidence unless the import states otherwise.
 Reminder commands save the requested schedule. The running app applies it and reports actual status.
 `--launch` starts the app; OS notification permission is still required. `reminders` distinguishes
 requested settings from app-reported scheduling status. There is no iPhone/Mac sync yet.
@@ -63,15 +77,19 @@ user's data on load failure. Preserve unrelated working changes. Sparkle is the 
 - `import-prompt --source chatgpt|claude` returns a provider-specific prompt as JSON.
 - `import FILE` / `import FILE --dry-run` previews without changing relationship data.
 - `import FILE --apply` validates, backs up, merges and saves the whole batch atomically.
-- The file format and merge rules are documented in README.md. Use version 1 with source
-  chatgpt or claude and a people array. Fields: name; optional id/types/contexts/intention/
-  notes/method/address/rhythmDays. Unknown keys and contact-history fields are rejected.
+- The file format and merge rules are documented in README.md. Version 1 (source chatgpt or claude and a
+  people array; fields name, optional id/types/contexts/intention/notes/method/address/rhythmDays) is still
+  accepted. Version 2 adds an optional per-person `context` object with `source`, `confidence`, `memories`,
+  `interests`, `ideas` and `rituals`. Unknown keys anywhere, contact-history fields and versions above 2 are
+  rejected before anything is written. Never mark agent-generated context as `known`.
 - Prefer existing UUIDs from `list` when the identity is known. Never guess matches or contact
   history from a passing mention. Unknown intentions should be omitted (new records use Unsure).
 - Keep import files containing personal data outside this repository. The native import screen
   previews and selects records; a local agent can use the CLI directly when instructed to import.
-- Repeated batches are idempotent for identical categories/notes. Existing preferences and
-  contact history are preserved. Backups are private files under Application Support/KeepClose/backups.
+- Repeated batches are idempotent for identical categories, notes and context; context matches on kind plus
+  the words of the text, ignoring punctuation. Existing preferences, contact history, the user's own wording
+  and set-aside ideas are preserved. Backups are private files under
+  Application Support/KeepClose/backups; an unchanged batch writes none.
 
 ## App lock / privacy
 

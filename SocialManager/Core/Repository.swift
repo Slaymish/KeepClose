@@ -113,7 +113,7 @@ public struct RelationshipRepository: Sendable {
                 try write(people, name: "relationships.json")
             }
             try write(people, name: "agent-checkpoint-\(batch.source.rawValue).json")
-            return .init(added: plan.added, updated: plan.updated, unchanged: plan.unchanged, backupPath: backupPath)
+            return .init(added: plan.added, updated: plan.updated, unchanged: plan.unchanged, newIdeas: plan.newIdeaCount, backupPath: backupPath)
         }
     }
     public func agentUpdateContext(_ provider: ImportProvider) throws -> AgentUpdateContext {
