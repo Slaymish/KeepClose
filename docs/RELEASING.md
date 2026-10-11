@@ -28,7 +28,7 @@ The Sparkle public key is committed in `project.yml`. Its private counterpart is
 4. Commit/push to main; `git tag -a v0.1.0 -m 'Keep Close 0.1.0'`, then `git push origin v0.1.0`.
 5. Inspect the **Release** workflow and the resulting GitHub release. A failed tag does not imply a published release.
 
-The workflow builds/tests both platforms, then packages universal Apple Silicon/Intel Mac app and CLI binaries. It signs every nested Sparkle component with the same Developer ID identity, notarizes the app and CLI, staples the app, signs the archive and appcast with Sparkle, and publishes `KeepClose-macOS.zip`, `keepclose-macOS.zip`, `appcast.xml`, and `SHA256SUMS` together. The CLI has an online notarization ticket; command-line executables do not support stapling.
+The workflow builds/tests both platforms, then packages universal Apple Silicon/Intel Mac app and CLI binaries. It signs every nested Sparkle component with the same Developer ID identity, notarizes the app and CLI, staples the app, signs the archive and appcast with Sparkle, and publishes `KeepClose-macOS.zip`, `keepclose-cli-macOS.zip`, `appcast.xml`, and `SHA256SUMS` together. The CLI has an online notarization ticket; command-line executables do not support stapling.
 
 The app reads `https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml`. Releases must remain public. The feed points directly at that version's immutable archive. Version numbers are semantic; build numbers are increasing integers, used by Sparkle to compare installs. Do not overwrite published archives/tags. The current feed intentionally advertises just the latest full update, without delta updates or older releases.
 

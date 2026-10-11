@@ -90,11 +90,11 @@ jobs:
           "$signer" --ed-key-file "$RUNNER_TEMP/sparkle.key" .build-release/dist/appcast.xml
           "$signer" --ed-key-file "$RUNNER_TEMP/sparkle.key" --verify .build-release/dist/appcast.xml
           cd .build-release/dist
-          shasum -a 256 KeepClose-macOS.zip keepclose-macOS.zip appcast.xml > SHA256SUMS
+          shasum -a 256 KeepClose-macOS.zip keepclose-cli-macOS.zip appcast.xml > SHA256SUMS
       - name: Publish GitHub release
         run: |
           python3 scripts/release.py notes '${{ steps.release.outputs.version }}' > "$RUNNER_TEMP/release-notes.md"
-          gh release create "$GITHUB_REF_NAME" .build-release/dist/KeepClose-macOS.zip .build-release/dist/keepclose-macOS.zip .build-release/dist/appcast.xml .build-release/dist/SHA256SUMS --verify-tag --title "Keep Close ${{ steps.release.outputs.version }}" --notes-file "$RUNNER_TEMP/release-notes.md" --latest
+          gh release create "$GITHUB_REF_NAME" .build-release/dist/KeepClose-macOS.zip .build-release/dist/keepclose-cli-macOS.zip .build-release/dist/appcast.xml .build-release/dist/SHA256SUMS --verify-tag --title "Keep Close ${{ steps.release.outputs.version }}" --notes-file "$RUNNER_TEMP/release-notes.md" --latest
       - name: Remove signing material
         if: always()
         run: |

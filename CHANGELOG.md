@@ -19,6 +19,8 @@
 - Review possible duplicates through a searchable chooser. Merge duplicate people while preserving notes, histories, plans, contact details and links, with a private backup and Undo.
 - Existing data and version-1/version-2 agent imports remain compatible. The CLI supports birthdays, merging, invitation resolution and plans.
 
+- App and CLI downloads now use distinct filenames, preventing archive replacement on case-insensitive Mac filesystems. Both packages are checked again before signing the update feed.
+
 ### Paired devices
 
 - Optional same-network pairing lets Mac and iPhone exchange relationship data, with conflict review and recovery. Device authentication, permissions and notification settings remain local to each device.

@@ -30,7 +30,9 @@ for arch in arm64 x86_64; do
 done
 lipo -create .build-release/keepclose-arm64 .build-release/keepclose-x86_64 -output .build-release/dist/keepclose
 codesign --force --sign "$KEEPCLOSE_SIGNING_IDENTITY" --options runtime --timestamp .build-release/dist/keepclose
-ditto -c -k --keepParent .build-release/dist/keepclose .build-release/dist/keepclose-macOS.zip
-xcrun notarytool submit .build-release/dist/keepclose-macOS.zip --key "$NOTARY_KEY_FILE" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait --output-format json > .build-release/cli-notarization.json
+ditto -c -k --keepParent .build-release/dist/keepclose .build-release/dist/keepclose-cli-macOS.zip
+xcrun notarytool submit .build-release/dist/keepclose-cli-macOS.zip --key "$NOTARY_KEY_FILE" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait --output-format json > .build-release/cli-notarization.json
 python3 -c 'import json; assert json.load(open(".build-release/cli-notarization.json"))["status"] == "Accepted", "CLI notarization was rejected"'
 # CLI cannot staple a ticket; Gatekeeper can retrieve its notarization ticket online.
+
+python3 scripts/verify-release-archives.py .build-release/dist "$version" "$build"

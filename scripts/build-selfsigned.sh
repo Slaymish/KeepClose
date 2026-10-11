@@ -4,7 +4,7 @@
 # This is the offline/self-signed path for a personal machine. It signs with a
 # certificate that exists in this keychain (Developer ID if present, otherwise
 # Apple Development) and produces the same file names as the Release workflow:
-# KeepClose-macOS.zip, keepclose-macOS.zip and SHA256SUMS.
+# KeepClose-macOS.zip, keepclose-cli-macOS.zip and SHA256SUMS.
 #
 # Not notarized: other Macs will refuse the first launch until the user approves it
 # in System Settings -> Privacy & Security, or clears the quarantine flag. Prefer the
@@ -80,15 +80,17 @@ codesign --force --sign "$identity" --options runtime --timestamp=none "$dist/ke
 
 # Each archive is built in the staging directory and checked, so a failure can never
 # leave a correctly named archive with the wrong contents.
-rm -f "$dist/KeepClose-macOS.zip" "$dist/keepclose-macOS.zip"
+rm -f "$dist/KeepClose-macOS.zip" "$dist/keepclose-cli-macOS.zip"
 
 app_zip="$staging/KeepClose-macOS.zip"
 python3 scripts/make-archive.py "$app" "$app_zip" --expect Contents/MacOS/SocialManager
 mv -f "$app_zip" "$dist/KeepClose-macOS.zip"
 
-cli_zip="$staging/keepclose-macOS.zip"
+cli_zip="$staging/keepclose-cli-macOS.zip"
 python3 scripts/make-archive.py "$dist/keepclose" "$cli_zip" --expect keepclose
-mv -f "$cli_zip" "$dist/keepclose-macOS.zip"
+mv -f "$cli_zip" "$dist/keepclose-cli-macOS.zip"
+
+python3 scripts/verify-release-archives.py "$dist" "$version" "$build"
 
 # The existing app-specific update key authenticates archives and feed, independently of Apple signing.
 signer="${SPARKLE_BIN:-.build-release/xcode/SourcePackages/artifacts/sparkle/Sparkle/bin}/sign_update"
@@ -102,7 +104,7 @@ python3 scripts/generate-appcast.py --version "$version" --build "$build" --arch
   --signature "$signature" --output "$dist/appcast.xml"
 "$signer" "${key_arguments[@]}" "$dist/appcast.xml"
 "$signer" "${key_arguments[@]}" --verify "$dist/appcast.xml"
-( cd "$dist" && shasum -a 256 KeepClose-macOS.zip keepclose-macOS.zip appcast.xml > SHA256SUMS )
+( cd "$dist" && shasum -a 256 KeepClose-macOS.zip keepclose-cli-macOS.zip appcast.xml > SHA256SUMS )
 
 
 echo
@@ -134,6 +136,6 @@ Developer ID certificate. On another Mac, macOS will block the first launch:
 
 The update archive and feed are signed with the existing Sparkle key. This authenticates updates,
 but does not provide Apple notarization or remove first-launch approval requirements." \
-    "$dist/KeepClose-macOS.zip" "$dist/keepclose-macOS.zip" "$dist/appcast.xml" "$dist/SHA256SUMS"
+    "$dist/KeepClose-macOS.zip" "$dist/keepclose-cli-macOS.zip" "$dist/appcast.xml" "$dist/SHA256SUMS"
   echo "Published $tag."
 fi

@@ -32,7 +32,7 @@ Published Mac releases are Developer ID signed and notarized. Sparkle checks for
 
 ### Install the agent CLI
 
-Download `keepclose-macOS.zip` from the same release, unzip it, then run:
+Download `keepclose-cli-macOS.zip` from the same release, unzip it, then run:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
