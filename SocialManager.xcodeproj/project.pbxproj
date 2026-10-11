@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		370285D1F0716AFD5EE29300 /* NativeSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = FAE1AF2B9BF0698EB4521E24 /* NativeSecurity */; };
 		3AA5F53A445919031F8D8651 /* AppLockController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDCEB556D5686FF8A4E831A /* AppLockController.swift */; };
+		4D91070DE761F58B6DBFB870 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = E538E62CF796D6E313AF737F /* Sparkle */; };
 		6B425481A5D244529C2FB3DD /* AppPrivacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2232C5361D0CB03503323925 /* AppPrivacy.swift */; };
 		749BC5C15E54BA7C11ACA044 /* AppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4753706A57E1913B056C5070 /* AppView.swift */; };
 		7CB34E2B1259D299775F7733 /* NativeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5F887367316DBEF7A0F2060D /* NativeCore */; };
@@ -19,16 +20,19 @@
 		A3588F4BD926BD248D755D38 /* AgentImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4426ECAED86B8FC3E6693B95 /* AgentImport.swift */; };
 		B61DA066B68E269EE8E8171D /* AgentInterchange in Frameworks */ = {isa = PBXBuildFile; productRef = 4D68D0BEBD7B8ADFA784C7A8 /* AgentInterchange */; };
 		BB3A36099CA5FF0000D12A5D /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622EEE96C957D14213AEC1AC /* Store.swift */; };
-		C519AC59C004ED431390C171 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = E538E62CF796D6E313AF737F /* Sparkle */; };
+		C519AC59C004ED431390C171 /* NativeSync in Frameworks */ = {isa = PBXBuildFile; productRef = 7C6539E424D5B545D32F3243 /* NativeSync */; };
+		E44AACCF77BACCFECD7C5816 /* KeepCloseSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0755C2017D7980AC22485866 /* KeepCloseSync.swift */; };
 		F43A8EB2EDE350611E5F9680 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9965A5B693388ECDCB24FB18 /* AppUpdater.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0755C2017D7980AC22485866 /* KeepCloseSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepCloseSync.swift; sourceTree = "<group>"; };
 		2232C5361D0CB03503323925 /* AppPrivacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPrivacy.swift; sourceTree = "<group>"; };
 		3CDCEB556D5686FF8A4E831A /* AppLockController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockController.swift; sourceTree = "<group>"; };
 		3F828510B39C56F1AFBFE699 /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
 		4426ECAED86B8FC3E6693B95 /* AgentImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentImport.swift; sourceTree = "<group>"; };
 		4753706A57E1913B056C5070 /* AppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppView.swift; sourceTree = "<group>"; };
+		568F5C92D48304D6B23F31B1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		622EEE96C957D14213AEC1AC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
 		7C5274067776E1845E5A620C /* SocialManager.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SocialManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9965A5B693388ECDCB24FB18 /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
@@ -45,7 +49,8 @@
 				370285D1F0716AFD5EE29300 /* NativeSecurity in Frameworks */,
 				B61DA066B68E269EE8E8171D /* AgentInterchange in Frameworks */,
 				8F638823EFB72EBA0634B4A7 /* NativeUI in Frameworks */,
-				C519AC59C004ED431390C171 /* Sparkle in Frameworks */,
+				C519AC59C004ED431390C171 /* NativeSync in Frameworks */,
+				4D91070DE761F58B6DBFB870 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -57,6 +62,8 @@
 			children = (
 				3CDCEB556D5686FF8A4E831A /* AppLockController.swift */,
 				9965A5B693388ECDCB24FB18 /* AppUpdater.swift */,
+				568F5C92D48304D6B23F31B1 /* Info.plist */,
+				0755C2017D7980AC22485866 /* KeepCloseSync.swift */,
 				622EEE96C957D14213AEC1AC /* Store.swift */,
 				4C9F01FD3E81B985E5B96804 /* Core */,
 				979779F15DAD4410F0A4CF1C /* Views */,
@@ -120,6 +127,7 @@
 				FAE1AF2B9BF0698EB4521E24 /* NativeSecurity */,
 				4D68D0BEBD7B8ADFA784C7A8 /* AgentInterchange */,
 				7F24DDE303C3DF59ABA6373B /* NativeUI */,
+				7C6539E424D5B545D32F3243 /* NativeSync */,
 				E538E62CF796D6E313AF737F /* Sparkle */,
 			);
 			productName = SocialManager;
@@ -174,6 +182,7 @@
 				6B425481A5D244529C2FB3DD /* AppPrivacy.swift in Sources */,
 				F43A8EB2EDE350611E5F9680 /* AppUpdater.swift in Sources */,
 				749BC5C15E54BA7C11ACA044 /* AppView.swift in Sources */,
+				E44AACCF77BACCFECD7C5816 /* KeepCloseSync.swift in Sources */,
 				866FADE59FC5626B8B729DD2 /* Person.swift in Sources */,
 				9A191D1B50718A5528DACC45 /* Repository.swift in Sources */,
 				BB3A36099CA5FF0000D12A5D /* Store.swift in Sources */,
@@ -233,6 +242,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Keep Close";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your private relationships and notes in Keep Close.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Keep Close syncs your relationships with your paired Mac or iPhone on this network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -301,6 +311,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Keep Close";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your private relationships and notes in Keep Close.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Keep Close syncs your relationships with your paired Mac or iPhone on this network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -323,6 +334,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				"ENABLE_APP_SANDBOX[sdk=macosx*]" = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = SocialManager/Info.plist;
 				"INFOPLIST_KEY_SUAllowsAutomaticUpdates[sdk=macosx*]" = YES;
 				"INFOPLIST_KEY_SUEnableAutomaticChecks[sdk=macosx*]" = YES;
 				"INFOPLIST_KEY_SUFeedURL[sdk=macosx*]" = "https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml";
@@ -354,6 +366,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				"ENABLE_APP_SANDBOX[sdk=macosx*]" = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = SocialManager/Info.plist;
 				"INFOPLIST_KEY_SUAllowsAutomaticUpdates[sdk=macosx*]" = YES;
 				"INFOPLIST_KEY_SUEnableAutomaticChecks[sdk=macosx*]" = YES;
 				"INFOPLIST_KEY_SUFeedURL[sdk=macosx*]" = "https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml";
@@ -413,7 +426,7 @@
 			repositoryURL = "https://github.com/Slaymish/HamishNativeLibrary";
 			requirement = {
 				kind = upToNextMinorVersion;
-				minimumVersion = 0.2.0;
+				minimumVersion = 0.3.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -428,6 +441,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F20596843260D6A7B21CE931 /* XCRemoteSwiftPackageReference "HamishNativeLibrary" */;
 			productName = NativeCore;
+		};
+		7C6539E424D5B545D32F3243 /* NativeSync */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F20596843260D6A7B21CE931 /* XCRemoteSwiftPackageReference "HamishNativeLibrary" */;
+			productName = NativeSync;
 		};
 		7F24DDE303C3DF59ABA6373B /* NativeUI */ = {
 			isa = XCSwiftPackageProductDependency;

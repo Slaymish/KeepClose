@@ -47,7 +47,7 @@ never infer anything from a suggestion the user ignored, and never present an ag
 Imported context defaults to `suggested` confidence unless the import states otherwise.
 Reminder commands save the requested schedule. The running app applies it and reports actual status.
 `--launch` starts the app; OS notification permission is still required. `reminders` distinguishes
-requested settings from app-reported scheduling status. There is no iPhone/Mac sync yet.
+requested settings from app-reported scheduling status. Optional same-network iPhone/Mac sync is available; see docs/NATIVE_LIBRARY.md. OS notification permission remains per device.
 
 ## Data and concurrency
 

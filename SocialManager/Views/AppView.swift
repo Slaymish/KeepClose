@@ -7,7 +7,7 @@ import SwiftUI
     private let updater = AppUpdater()
     #endif
     var body: some Scene {
-        WindowGroup { ProtectedAppView().environment(store).environment(appLock) }
+        WindowGroup { ProtectedAppView().environment(store).environment(appLock).modifier(KeepCloseSyncLifecycle()) }
         #if os(macOS)
         .commands {
             CommandGroup(after: .appInfo) { CheckForUpdatesView(updater: updater) }
@@ -205,8 +205,11 @@ struct AppView: View {
                 if !store.reminderMessage.isEmpty { Text(store.reminderMessage).font(.caption).foregroundStyle(.secondary) }
                 Text("One quiet reminder a day at most, inviting you to open Keep Close if it suits. It never counts up, never escalates, and skipping it means nothing.").font(.footnote).foregroundStyle(.secondary)
             }
+            Section("Device sync") {
+                NavigationLink("Sync with your other device") { KeepCloseSyncSettings() }
+            }
             Section("What leaves this device") {
-                Text("Relationships, notes, memories and ideas are saved locally on this device. This version doesn't sync between your iPhone and Mac.")
+                Text("Relationships, notes, memories and ideas are saved locally. If you enable Device sync, shared records are exchanged automatically with your paired device on the same network.")
                 Text("Nothing is sent to ChatGPT, Claude or anywhere else automatically. When you copy an import prompt, it contains your notes and recorded context — only share it with a chat you're happy to have that information.").font(.callout)
                 Text("The app opens your chosen contact app. You send the message yourself, then log it here if you want to.").font(.callout)
             }

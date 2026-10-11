@@ -17,7 +17,7 @@ A native SwiftUI app for Mac, iPhone and iPad, with a CLI your agents can use.
 A relationship you have not contacted for a year is not a failure; it may simply be a relationship you
 have not needed to maintain. Keep Close is designed to be satisfying when there is nothing to do.
 
-**Status:** early version. Data stays local to each device; **iPhone and Mac do not sync yet**. The screenshot uses fictional data.
+**Status:** early version. Data is saved locally; optional **Device sync** exchanges shared records with your paired Mac/iPhone on the same network. The screenshot uses fictional data.
 
 ## Install on Mac
 
@@ -122,7 +122,7 @@ privacy details below.
 
 ## Limits and next decisions
 
-On Mac, app and CLI share `~/Library/Application Support/KeepClose`. The local Mac build is not sandboxed, allowing agents to access the same data; iOS retains its app sandbox. Files are saved atomically with a shared lock. The app refreshes external changes every two seconds and rejects stale editor saves. Each device keeps a separate local copy. **There is no cross-device sync yet.** Do not enter the same information on both devices expecting it to merge.
+On Mac, app and CLI share `~/Library/Application Support/KeepClose`. The local Mac build is not sandboxed, allowing agents to access the same data; iOS retains its app sandbox. Files are saved atomically with a shared lock. The app refreshes external changes every two seconds and rejects stale editor saves. Each device keeps a separate local copy. Enable Device sync in Preferences to pair them. Existing records merge by stable IDs; conflicting offline edits require review, and independently created duplicates remain separate people. Keep both apps open and the Mac awake on a reachable local network. See [device-sync details](docs/NATIVE_LIBRARY.md).
 
 Keep Close reduces the effort of choosing and starting. It cannot guarantee follow-through, and it does not try to. It deliberately avoids overdue scores, streaks and increasing alerts.
 
@@ -192,7 +192,7 @@ The grounding rules are part of the prompt rather than an afterthought: no inven
 
 - Local agents with terminal access get the CLI path in the prompt. They can preview and apply a batch directly. The running Mac app refreshes after import.
 - Chats without local terminal access return a `keepclose-import.json` file or JSON code block. Choose the file or paste the JSON in the app, inspect the preview, select the people to include, and import.
-- On iPhone, the prompt uses the file/paste route. Imported data is still local to that device; cross-device sync is not implemented.
+- On iPhone, the prompt uses the file/paste route. Imported records and agent-update checkpoints also reach your paired device when Device sync is enabled. OS permissions and app locks remain per device.
 
 CLI commands:
 

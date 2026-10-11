@@ -1,6 +1,6 @@
 # Shared native library
 
-The CLI/core package and macOS/iOS app consume HamishNativeLibrary 0.2.x from its public GitHub repository.
+The CLI/core package and macOS/iOS app consume HamishNativeLibrary 0.3.x from its public GitHub repository.
 Package.swift and project.yml own the dependency; commit Package.resolved when updating its tested version.
 
 NativeCore supplies JSON codecs, application-support paths, atomic private writes, the synchronous lock
@@ -28,3 +28,18 @@ Run `swift test`, `python3 scripts/test-cli.py`, both native builds and release-
 Test a real update from the previous installed app before publishing a feed. No real user data or credentials
 are touched during these isolated checks. Shared fixes belong in HamishNativeLibrary; Keep Close's domain
 rules belong here. Library updates require an app rebuild/release to reach installed users.
+
+NativeSync 0.3.1 adds opt-in automatic same-network device sync. Preferences → Device sync on the
+Mac creates a pairing code; paste it on the iPhone. Repository recovery, sync exchange and normal
+CLI/app writes share `.lock`. Portable records include complete Person values, requested reminder
+preferences and provider checkpoints. App locks, actual OS permissions/status, keys and backups
+remain per device. Conflicting records must be reviewed in Device sync before editing them again.
+
+Keep both apps open and the Mac awake. iOS suspends background apps; no relay/iCloud dependency or
+away-from-home service is configured. Local data/backups remain private JSON rather than encrypted
+storage. Disconnect does not retract copied data. See HamishNativeLibrary docs/LOCAL_SYNC.md.
+Physical-device pairing, permissions and sleep/wake remain release validation steps.
+
+Native Contacts identifiers may differ between devices. A copied link is not proof that the local Contacts
+record has been matched. A missing lookup must preserve app values; use reviewed phone/email matching to
+link the local contact. Sync does not copy the address book or grant Contacts permission.

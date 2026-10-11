@@ -10,11 +10,12 @@ settings:
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
     INFOPLIST_KEY_CFBundleDisplayName: Keep Close
+    INFOPLIST_KEY_NSLocalNetworkUsageDescription: Keep Close syncs your relationships with your paired Mac or iPhone on this network.
     INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock your private relationships and notes in Keep Close.
 packages:
   HamishNativeLibrary:
     url: https://github.com/Slaymish/HamishNativeLibrary
-    minorVersion: 0.2.0
+    minorVersion: 0.3.1
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.10.0
@@ -26,9 +27,23 @@ targets:
       iOS: '17.0'
       macOS: '14.0'
     sources: [SocialManager]
+    info:
+      path: SocialManager/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSBonjourServices: ["_keepclose._tcp"]
+        # Custom Sparkle keys must be in the source plist; generated-info build settings omit custom keys.
+        # The updater/framework still compile only on macOS; iOS ignores this public metadata.
+        SUFeedURL: https://github.com/slaymish/KeepClose/releases/latest/download/appcast.xml
+        SUPublicEDKey: GrB8p71JkrPcpzhFa5rdgDycN2MtTGIgB3wlj70h3Vo=
+        SUEnableAutomaticChecks: true
+        SURequireSignedFeed: true
+        SUVerifyUpdateBeforeExtraction: true
+        SUAllowsAutomaticUpdates: true
     dependencies:
       - package: HamishNativeLibrary
-        products: [NativeCore, NativeSecurity, AgentInterchange, NativeUI]
+        products: [NativeCore, NativeSecurity, AgentInterchange, NativeUI, NativeSync]
       - package: Sparkle
         destinationFilters: [macOS]
     settings:
